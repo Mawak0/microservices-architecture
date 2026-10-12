@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import { validateResponse, validateEvent } from './schemas.mjs';
 
 export const token = role => `test-${role}`;
 export const key = () => randomUUID();
@@ -21,7 +22,11 @@ export async function request(base, method, path, { body, role = 'admin', idempo
   const data = res.headers.get('content-type')?.includes('json') && raw.length ? JSON.parse(raw) : raw;
   return { status: res.status, data, headers: res.headers };
 }
-export const api = (method, path, options) => request(requireService(), method, path, options);
+export async function api(method, path, options) {
+  const response = await request(requireService(), method, path, options);
+  validateResponse(method, path, response);
+  return response;
+}
 export const fixture = (method, path, body) => request(fixtureBase, method, path, { body, role: null });
 export async function scenario(options = {}) {
   const r = await fixture('POST', '/__test/scenarios', options); assert.equal(r.status, 201); return r.data;
@@ -41,6 +46,9 @@ export async function eventually(operation, predicate, message = 'Асинхро
 }
 export async function events(gameId, type) {
   const r = await fixture('GET', `/__test/events?gameId=${gameId}`);
-  expectStatus(r, 200); return r.data.filter(e => !type || e.type === type);
+  expectStatus(r, 200);
+  for (const event of r.data) validateEvent(event);
+  return r.data.filter(e => !type || e.type === type);
 }
-export const pngBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aG1cAAAAASUVORK5CYII=';
+// Минимальная корректная PNG для транспортных тестов, не образец читаемого бланка.
+export const pngBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4////fwAJ+wP9KobjigAAAABJRU5ErkJggg==';

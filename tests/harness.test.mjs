@@ -2,7 +2,26 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { createFixtureServer } from '../test-support/fixtures.mjs';
-import { request } from '../test-support/client.mjs';
+import { request, pngBase64 } from '../test-support/client.mjs';
+import { inflateSync } from 'node:zlib';
+
+test('PNG тестовых запросов имеет корректные CRC и сжатый поток', () => {
+  const image = Buffer.from(pngBase64, 'base64');
+  assert.equal(image.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
+  const chunks = [];
+  for (let offset = 8; offset < image.length;) {
+    const length = image.readUInt32BE(offset), data = image.subarray(offset + 4, offset + 8 + length);
+    let crc = 0xffffffff;
+    for (const byte of data) {
+      crc ^= byte;
+      for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ ((crc & 1) ? 0xedb88320 : 0);
+    }
+    assert.equal((crc ^ 0xffffffff) >>> 0, image.readUInt32BE(offset + 8 + length));
+    if (data.subarray(0, 4).toString() === 'IDAT') chunks.push(data.subarray(4));
+    offset += length + 12;
+  }
+  assert.deepEqual([...inflateSync(Buffer.concat(chunks))], [0, 255, 255, 255, 255]);
+});
 
 test('Заглушки изолируют сценарии, проверяют QR, имитируют ошибки хранения и событий', async t => {
   const server = createFixtureServer(); server.listen(0, '127.0.0.1'); await once(server, 'listening');
