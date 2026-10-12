@@ -1,166 +1,998 @@
 {
   "openapi": "3.1.0",
-  "servers": [{ "url": "/", "description": "Адрес экземпляра задаётся при развёртывании" }],
-  "info": { "title": "Sapientum Review and Appeals Service", "version": "0.1.0", "description": "Предлагаемый API без реализации; бизнес-правила и ошибки — SERVICE.md." },
-  "security": [{ "bearerAuth": [] }],
+  "servers": [
+    {
+      "url": "/",
+      "description": "Адрес экземпляра задаётся при развёртывании"
+    }
+  ],
+  "info": {
+    "title": "Sapientum Review and Appeals Service",
+    "version": "0.2.0",
+    "description": "Предлагаемый API без реализации; бизнес-правила и ошибки — SERVICE.md."
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
   "paths": {
     "/integrations/receipts": {
       "post": {
-        "operationId": "receiveAcceptedReceipt", "summary": "Получить событие принятого ответа", "x-roles": ["integration", "admin"],
+        "operationId": "receiveAcceptedReceipt",
+        "summary": "Получить событие принятого ответа",
+        "x-roles": [
+          "integration",
+          "admin"
+        ],
         "description": "Доставка ReceiptAccepted. Дедупликация и по eventId, и по receiptId; ранее принятые ответы доставляются и после срока сдачи.",
-        "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "allOf": [{ "$ref": "./intake-events.schema.json" }, { "properties": { "type": { "const": "ReceiptAccepted" } } }] } } } },
-        "responses": { "201": { "$ref": "#/components/responses/Check" }, "200": { "$ref": "#/components/responses/Check" }, "default": { "$ref": "#/components/responses/Error" } }
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "allOf": [
+                  {
+                    "$ref": "./intake-events.schema.json"
+                  },
+                  {
+                    "properties": {
+                      "type": {
+                        "const": "ReceiptAccepted"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Check"
+          },
+          "201": {
+            "$ref": "#/components/responses/Check"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
       }
     },
     "/integrations/intake-closures": {
       "post": {
-        "operationId": "receiveIntakeManifest", "summary": "Получить полный список принятых ответов", "x-roles": ["integration", "admin"],
-        "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "allOf": [{ "$ref": "./intake-events.schema.json" }, { "properties": { "type": { "const": "IntakeClosed" } } }] } } } },
-        "responses": { "200": { "$ref": "#/components/responses/Completion" }, "default": { "$ref": "#/components/responses/Error" } }
+        "operationId": "receiveIntakeManifest",
+        "summary": "Получить полный список принятых ответов",
+        "x-roles": [
+          "integration",
+          "admin"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "allOf": [
+                  {
+                    "$ref": "./intake-events.schema.json"
+                  },
+                  {
+                    "properties": {
+                      "type": {
+                        "const": "IntakeClosed"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Completion"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "description": "Manifest охватывает все ответы игры. Старые admissionVersion подтверждаются без изменения актуальной полноты; новые версии не сбрасывают дела и квоту."
       }
     },
     "/checks": {
-      "get": { "operationId": "listChecks", "summary": "Список дел игры", "x-roles": ["admin", "checker"],
-        "parameters": [{ "in": "query", "name": "gameId", "required": true, "schema": { "type": "string" } }],
-        "responses": { "200": { "description": "Дела игры", "content": { "application/json": { "schema": { "type": "object", "required": ["items"], "properties": { "items": { "type": "array", "items": { "$ref": "#/components/schemas/Check" } } } } } } }, "default": { "$ref": "#/components/responses/Error" } }
+      "get": {
+        "operationId": "listChecks",
+        "summary": "Список дел игры",
+        "x-roles": [
+          "admin",
+          "checker"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "gameId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Дела игры",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "items"
+                  ],
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Check"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
       }
     },
     "/checks/next": {
-      "post": { "operationId": "claimNextCheck", "summary": "Взять следующий ответ", "x-roles": ["admin", "checker"],
-        "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "additionalProperties": false, "required": ["gameId"], "properties": { "gameId": { "type": "string" } } } } } },
-        "responses": { "200": { "$ref": "#/components/responses/Check" }, "204": { "description": "Нет доступных дел; это не подтверждение полноты проверок" }, "default": { "$ref": "#/components/responses/Error" } }
+      "post": {
+        "operationId": "claimNextCheck",
+        "summary": "Взять следующий ответ",
+        "x-roles": [
+          "admin",
+          "checker"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "gameId"
+                ],
+                "properties": {
+                  "gameId": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Check"
+          },
+          "204": {
+            "description": "Нет доступных дел; это не подтверждение полноты проверок"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
       }
     },
     "/checks/{id}": {
-      "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "string" } }],
-      "get": { "operationId": "getCheck", "summary": "Прочитать дело ответа", "x-roles": ["admin", "checker", "integration"], "responses": { "200": { "$ref": "#/components/responses/Check" }, "default": { "$ref": "#/components/responses/Error" } } }
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "getCheck",
+        "summary": "Прочитать дело ответа",
+        "x-roles": [
+          "admin",
+          "checker",
+          "integration"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Check"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
     },
     "/checks/{id}/claim": {
-      "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "string" } }],
-      "post": { "operationId": "claimCheck", "summary": "Назначить дело проверяющему", "x-roles": ["admin", "checker"], "description": "Атомарно назначить свободное дело текущему проверяющему.",
-        "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
-        "responses": { "200": { "$ref": "#/components/responses/Check" }, "default": { "$ref": "#/components/responses/Error" } }
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "claimCheck",
+        "summary": "Назначить дело проверяющему",
+        "x-roles": [
+          "admin",
+          "checker"
+        ],
+        "description": "Атомарно назначить свободное дело текущему проверяющему.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Check"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
       }
     },
     "/checks/{id}/release": {
-      "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "string" } }],
-      "post": { "operationId": "releaseCheck", "summary": "Освободить назначение", "x-roles": ["admin", "checker"], "description": "Вернуть назначенное дело в очередь; только исполнитель или администратор.",
-        "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
-        "responses": { "200": { "$ref": "#/components/responses/Check" }, "default": { "$ref": "#/components/responses/Error" } }
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "releaseCheck",
+        "summary": "Освободить назначение",
+        "x-roles": [
+          "admin",
+          "checker"
+        ],
+        "description": "Вернуть назначенное дело в очередь; только исполнитель или администратор.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Check"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
       }
     },
     "/checks/{id}/verdict": {
-      "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "string" } }],
-      "post": { "operationId": "recordVerdict", "summary": "Сохранить расшифровку и вердикт", "x-roles": ["admin", "checker"],
-        "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/VerdictRequest" } } } },
-        "responses": { "200": { "$ref": "#/components/responses/Check" }, "default": { "$ref": "#/components/responses/Error" } }
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "recordVerdict",
+        "summary": "Сохранить выбор «верно» или «неверно»",
+        "x-roles": [
+          "admin",
+          "checker"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerdictRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Check"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
       }
     },
     "/checks/{id}/corrections": {
-      "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "string" } }],
-      "post": { "operationId": "correctVerdictAsAdmin", "summary": "Исправить вердикт администратором", "x-roles": ["admin"],
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "correctVerdictAsAdmin",
+        "summary": "Исправить вердикт администратором",
+        "x-roles": [
+          "admin"
+        ],
         "description": "Прямое административное исправление, не апелляция. Работает и в домино.",
-        "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CorrectionRequest" } } } },
-        "responses": { "200": { "$ref": "#/components/responses/Check" }, "default": { "$ref": "#/components/responses/Error" } }
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CorrectionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Check"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
       }
     },
     "/appeal-quotas/{gameId}": {
-      "parameters": [{ "in": "path", "name": "gameId", "required": true, "schema": { "type": "string" } }],
-      "put": { "operationId": "setAppealLimit", "summary": "Установить общий лимит апелляций игры", "x-roles": ["admin"],
-        "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "additionalProperties": false, "required": ["limit"], "properties": { "limit": { "type": "integer", "minimum": 0 } } } } } },
-        "responses": { "200": { "$ref": "#/components/responses/Quota" }, "default": { "$ref": "#/components/responses/Error" } }
+      "parameters": [
+        {
+          "in": "path",
+          "name": "gameId",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "put": {
+        "operationId": "setAppealLimit",
+        "summary": "Установить общий лимит апелляций игры",
+        "x-roles": [
+          "admin"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "limit"
+                ],
+                "properties": {
+                  "limit": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Quota"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
       },
-      "get": { "operationId": "getAppealQuota", "summary": "Узнать остаток общей квоты", "x-roles": ["admin", "observer", "checker", "integration"],
-        "responses": { "200": { "$ref": "#/components/responses/Quota" }, "default": { "$ref": "#/components/responses/Error" } }
+      "get": {
+        "operationId": "getAppealQuota",
+        "summary": "Узнать остаток общей квоты",
+        "x-roles": [
+          "admin",
+          "observer",
+          "checker",
+          "integration"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Quota"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
       }
     },
     "/appeals": {
-      "post": { "operationId": "fileAppeal", "summary": "Подать апелляцию по просьбе участника", "x-roles": ["admin", "observer"],
-        "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "additionalProperties": false, "required": ["checkId", "reason"], "properties": { "checkId": { "type": "string" }, "reason": { "type": "string", "minLength": 1 } } } } } },
-        "responses": { "201": { "$ref": "#/components/responses/Appeal" }, "200": { "$ref": "#/components/responses/Appeal" }, "default": { "$ref": "#/components/responses/Error" } }
+      "post": {
+        "operationId": "fileAppeal",
+        "summary": "Подать апелляцию по просьбе участника",
+        "x-roles": [
+          "admin",
+          "observer"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "checkId",
+                  "reason"
+                ],
+                "properties": {
+                  "checkId": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Appeal"
+          },
+          "201": {
+            "$ref": "#/components/responses/Appeal"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
       }
     },
     "/appeals/{id}/claim": {
-      "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "string" } }],
-      "post": { "operationId": "claimAppeal", "summary": "Взять апелляцию на рассмотрение", "x-roles": ["admin", "checker"], "description": "Назначить апелляцию и вернуть исходный снимок/вердикт в поле check.",
-        "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
-        "responses": { "200": { "$ref": "#/components/responses/Appeal" }, "default": { "$ref": "#/components/responses/Error" } }
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "claimAppeal",
+        "summary": "Взять апелляцию на рассмотрение",
+        "x-roles": [
+          "admin",
+          "checker"
+        ],
+        "description": "Назначить апелляцию и вернуть исходный снимок/вердикт в поле check.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Appeal"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
       }
     },
     "/appeals/{id}/resolve": {
-      "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "string" } }],
-      "post": { "operationId": "resolveAppeal", "summary": "Вынести решение по апелляции", "x-roles": ["admin", "checker"],
-        "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AppealResolution" } } } },
-        "responses": { "200": { "$ref": "#/components/responses/Appeal" }, "default": { "$ref": "#/components/responses/Error" } }
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "resolveAppeal",
+        "summary": "Вынести решение по апелляции",
+        "x-roles": [
+          "admin",
+          "checker"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppealResolution"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Appeal"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
       }
     },
     "/games/{gameId}/completion": {
-      "parameters": [{ "in": "path", "name": "gameId", "required": true, "schema": { "type": "string" } }],
-      "get": { "operationId": "getReviewCompletion", "summary": "Проверить полноту проверок игры", "x-roles": ["admin", "integration"],
-        "responses": { "200": { "$ref": "#/components/responses/Completion" }, "default": { "$ref": "#/components/responses/Error" } }
+      "parameters": [
+        {
+          "in": "path",
+          "name": "gameId",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "getReviewCompletion",
+        "summary": "Проверить полноту с учётом текущего разрешения приёма",
+        "x-roles": [
+          "admin",
+          "integration"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Completion"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
       }
     }
   },
   "components": {
-    "securitySchemes": { "bearerAuth": { "type": "http", "scheme": "bearer" } },
-    "parameters": { "IdempotencyKey": { "in": "header", "name": "Idempotency-Key", "required": true, "schema": { "type": "string", "minLength": 1 } } },
-    "responses": {
-      "Error": { "description": "401/403/404/409/422/503; коды в SERVICE.md", "content": { "application/json": { "schema": { "$ref": "./common.json#/$defs/Error" } } } },
-      "Check": { "description": "Дело проверки", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Check" } } } },
-      "Quota": { "description": "Общая квота игры", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Quota" } } } },
-      "Appeal": { "description": "Апелляция", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Appeal" } } } },
-      "Completion": { "description": "Полнота проверок текущего цикла", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Completion" } } } }
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
     },
-    "schemas": {
-      "VerdictRequest": {
-        "type": "object", "additionalProperties": false, "required": ["taskId", "transcription", "verdict"],
-        "properties": { "taskId": { "type": "string" }, "transcription": { "type": "string" }, "verdict": { "enum": ["correct", "incorrect"] } }
-      },
-      "CorrectionRequest": {
-        "type": "object", "additionalProperties": false, "required": ["transcription", "verdict", "reason"],
-        "properties": { "transcription": { "type": "string" }, "verdict": { "enum": ["correct", "incorrect"] }, "reason": { "type": "string", "minLength": 1 } }
+    "parameters": {
+      "IdempotencyKey": {
+        "in": "header",
+        "name": "Idempotency-Key",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "responses": {
+      "Error": {
+        "description": "401/403/404/409/422/503; коды в SERVICE.md",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "./common.json#/$defs/Error"
+            }
+          }
+        }
       },
       "Check": {
-        "type": "object", "required": ["id", "receiptId", "blankId", "gameId", "cycleId", "teamId", "imageRef", "status", "assignedTo", "originalVerdict", "verdict", "revision", "history"],
-        "properties": {
-          "id": { "type": "string" }, "receiptId": { "type": "string" }, "blankId": { "type": "string" }, "gameId": { "type": "string" },
-          "cycleId": { "type": "string" }, "teamId": { "type": "string" }, "imageRef": { "type": "string" },
-          "taskId": { "type": ["string", "null"] }, "transcription": { "type": ["string", "null"] },
-          "status": { "enum": ["pending", "checking", "checked", "appeal-pending", "appeal-checking"] }, "assignedTo": { "type": ["string", "null"] },
-          "originalVerdict": { "enum": ["correct", "incorrect", null] }, "verdict": { "enum": ["correct", "incorrect", null] },
-          "revision": { "type": "integer", "minimum": 0 }, "history": { "type": "array", "items": { "type": "object", "required": ["verdict", "actorId", "recordedAt"],
-            "properties": { "verdict": { "enum": ["correct", "incorrect"] }, "actorId": { "type": "string" }, "recordedAt": { "type": "string", "format": "date-time" }, "reason": { "type": "string" } } } }
+        "description": "Дело проверки",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Check"
+            }
+          }
         }
       },
       "Quota": {
-        "type": "object", "required": ["gameId", "limit", "used", "remaining"],
-        "properties": { "gameId": { "type": "string" }, "limit": { "type": "integer", "minimum": 0 }, "used": { "type": "integer", "minimum": 0 }, "remaining": { "type": "integer", "minimum": 0 } }
+        "description": "Общая квота игры",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Quota"
+            }
+          }
+        }
       },
       "Appeal": {
-        "type": "object", "required": ["id", "checkId", "status", "check"],
-        "properties": { "id": { "type": "string" }, "checkId": { "type": "string" }, "status": { "enum": ["pending", "checking", "resolved"] },
-          "outcome": { "enum": ["upheld", "jury-error-corrected", null] }, "check": { "$ref": "#/components/schemas/Check" } }
-      },
-      "AppealResolution": {
-        "type": "object", "additionalProperties": false, "required": ["outcome", "reason"],
-        "properties": { "outcome": { "enum": ["upheld", "jury-error-corrected"] }, "reason": { "type": "string", "minLength": 1 },
-          "verdict": { "enum": ["correct", "incorrect"] }, "transcription": { "type": "string" } },
-        "allOf": [{ "if": { "properties": { "outcome": { "const": "jury-error-corrected" } } }, "then": { "required": ["verdict", "transcription"], "properties": { "verdict": {}, "transcription": {} } } }]
+        "description": "Апелляция",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Appeal"
+            }
+          }
+        }
       },
       "Completion": {
-        "type": "object", "required": ["gameId", "cycleId", "manifestReceived", "complete", "missingReceiptIds", "pendingCheckIds", "pendingAppealIds"],
-        "properties": { "gameId": { "type": "string" }, "cycleId": { "type": "string" }, "manifestReceived": { "type": "boolean" }, "complete": { "type": "boolean" },
-          "missingReceiptIds": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
-          "pendingCheckIds": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
-          "pendingAppealIds": { "type": "array", "uniqueItems": true, "items": { "type": "string" } } }
+        "description": "Полнота проверок текущего цикла",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Completion"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "VerdictRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "verdict"
+        ],
+        "properties": {
+          "verdict": {
+            "enum": [
+              "correct",
+              "incorrect"
+            ]
+          }
+        }
+      },
+      "CorrectionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "verdict",
+          "reason"
+        ],
+        "properties": {
+          "verdict": {
+            "enum": [
+              "correct",
+              "incorrect"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "Check": {
+        "type": "object",
+        "required": [
+          "id",
+          "receiptId",
+          "blankId",
+          "gameId",
+          "admissionVersion",
+          "teamId",
+          "imageRef",
+          "status",
+          "assignedTo",
+          "originalVerdict",
+          "verdict",
+          "revision",
+          "history",
+          "taskId",
+          "taskNumber",
+          "referenceAnswer"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "receiptId": {
+            "type": "string"
+          },
+          "blankId": {
+            "type": "string"
+          },
+          "gameId": {
+            "type": "string"
+          },
+          "admissionVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "teamId": {
+            "type": "string"
+          },
+          "imageRef": {
+            "type": "string"
+          },
+          "taskId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "checking",
+              "checked",
+              "appeal-pending",
+              "appeal-checking"
+            ]
+          },
+          "assignedTo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "originalVerdict": {
+            "enum": [
+              "correct",
+              "incorrect",
+              null
+            ]
+          },
+          "verdict": {
+            "enum": [
+              "correct",
+              "incorrect",
+              null
+            ]
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "verdict",
+                "actorId",
+                "recordedAt"
+              ],
+              "properties": {
+                "verdict": {
+                  "enum": [
+                    "correct",
+                    "incorrect"
+                  ]
+                },
+                "actorId": {
+                  "type": "string"
+                },
+                "recordedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "reason": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "taskNumber": {
+            "type": "string",
+            "minLength": 1
+          },
+          "referenceAnswer": {
+            "type": "string",
+            "description": "Серверный эталон задачи, определённой по бланку; только авторизованным проверяющим/администратору."
+          }
+        }
+      },
+      "Quota": {
+        "type": "object",
+        "required": [
+          "gameId",
+          "limit",
+          "used",
+          "remaining"
+        ],
+        "properties": {
+          "gameId": {
+            "type": "string"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "used": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "remaining": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "Appeal": {
+        "type": "object",
+        "required": [
+          "id",
+          "checkId",
+          "status",
+          "check"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "checkId": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "checking",
+              "resolved"
+            ]
+          },
+          "outcome": {
+            "enum": [
+              "upheld",
+              "jury-error-corrected",
+              null
+            ]
+          },
+          "check": {
+            "$ref": "#/components/schemas/Check"
+          }
+        }
+      },
+      "AppealResolution": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "outcome",
+          "reason"
+        ],
+        "properties": {
+          "outcome": {
+            "enum": [
+              "upheld",
+              "jury-error-corrected"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          },
+          "verdict": {
+            "enum": [
+              "correct",
+              "incorrect"
+            ]
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "outcome": {
+                  "const": "jury-error-corrected"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "verdict"
+              ],
+              "properties": {
+                "verdict": {}
+              }
+            }
+          }
+        ],
+        "description": "jury-error-corrected требует нового, отличного от текущего вердикта. Без изменения решения квота не возвращается."
+      },
+      "Completion": {
+        "type": "object",
+        "required": [
+          "gameId",
+          "admissionVersion",
+          "manifestReceived",
+          "complete",
+          "missingReceiptIds",
+          "pendingCheckIds",
+          "pendingAppealIds",
+          "acceptingSubmissions"
+        ],
+        "properties": {
+          "gameId": {
+            "type": "string"
+          },
+          "admissionVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "manifestReceived": {
+            "type": "boolean"
+          },
+          "complete": {
+            "type": "boolean"
+          },
+          "missingReceiptIds": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string"
+            }
+          },
+          "pendingCheckIds": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string"
+            }
+          },
+          "pendingAppealIds": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string"
+            }
+          },
+          "acceptingSubmissions": {
+            "type": "boolean",
+            "description": "Приём разрешён обычным сроком или lateSubmissionAllowed; при true complete всегда false."
+          }
+        }
       }
     }
   }

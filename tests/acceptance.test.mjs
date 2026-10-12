@@ -9,7 +9,7 @@ function receiptEvent(s, index = 0) {
 const ingest = (s, index = 0, options = {}) => api('POST', '/integrations/receipts', { role: 'system', body: receiptEvent(s, index), ...options });
 const claim = (id, role = 'checker') => api('POST', `/checks/${id}/claim`, { role });
 const verdict = (s, id, extra = {}, options = {}) => api('POST', `/checks/${id}/verdict`, { role: 'checker', body: {
-  taskId: s.taskIds[0], transcription: '5', verdict: 'incorrect', ...extra
+  verdict: 'incorrect', ...extra
 }, ...options });
 async function checked(s, index = 0, extra = {}) {
   const c = expectStatus(await ingest(s, index), 201); expectStatus(await claim(c.id), 200);
@@ -28,13 +28,14 @@ async function claimedAppeal(id) {
 }
 const resolve = (id, body = {}, options = {}) => api('POST', `/appeals/${id}/resolve`, { role: 'checker', body: {
   outcome: 'jury-error-corrected', reason: 'Результат пересмотра жюри',
-  ...(body.outcome === 'upheld' ? {} : { verdict: 'correct', transcription: '4' }), ...body
+  ...(body.outcome === 'upheld' ? {} : { verdict: 'correct' }), ...body
 }, ...options });
 const expire = s => fixture('PATCH', `/__test/scenarios/${s.game.id}`, { submissionOpen: false, appealOpen: false, finishExpired: true });
 const completion = async s => expectStatus(await api('GET', `/games/${s.game.id}/completion`, { role: 'system' }), 200);
-const manifest = (s, ids, cycleId = s.game.cycleId) => api('POST', '/integrations/intake-closures', { role: 'system', body: {
+const currentGame = async s => expectStatus(await fixture('GET', `/games/${s.game.id}`), 200);
+const manifest = async (s, ids, admissionVersion) => api('POST', '/integrations/intake-closures', { role: 'system', body: {
   eventId: key(), type: 'IntakeClosed', aggregateId: s.game.id, occurredAt: new Date().toISOString(),
-  data: { gameId: s.game.id, cycleId, receiptIds: ids }
+  data: { gameId: s.game.id, admissionVersion: admissionVersion ?? (await currentGame(s)).admissionVersion, receiptIds: ids }
 } });
 
 describe('ТЗ: проверка и апелляции', { concurrency: false }, () => {
@@ -63,16 +64,18 @@ describe('ТЗ: проверка и апелляции', { concurrency: false },
     const s = await setup(), c = expectStatus(await ingest(s), 201); expectStatus(await claim(c.id), 200);
     expectError(await verdict(s, c.id, {}, { role: 'checker-2' }), 409, 'CHECK_NOT_ASSIGNED_TO_YOU');
   });
-  it('R05 сохраняются ручная расшифровка и исходный вердикт', async () => {
+  it('R05 задача берётся из бланка, сохраняется только выбранный вердикт', async () => {
     const s = await setup(), c = await checked(s);
-    assert.equal(c.taskId, s.taskIds[0]); assert.equal(c.transcription, '5'); assert.equal(c.originalVerdict, 'incorrect');
+    assert.equal(c.taskId, s.receipts[0].taskId); assert.equal(c.taskNumber, s.receipts[0].taskNumber);
+    assert.equal(c.referenceAnswer, '4'); assert.equal(c.originalVerdict, 'incorrect');
     assert.equal(c.verdict, 'incorrect'); assert.equal(c.status, 'checked'); assert.equal(c.history.length, 1);
     assert.equal(c.history[0].actorId, 'test-checker'); assert.equal(c.revision, 1);
   });
-  it('R06 нельзя выбрать задачу другой игры', async () => {
+  it('R06 проверяющий не может подменить задачу или передать расшифровку', async () => {
     const s = await setup(), other = await scenario(), c = expectStatus(await ingest(s), 201);
     expectStatus(await claim(c.id), 200);
-    expectError(await verdict(s, c.id, { taskId: other.taskIds[0] }), 422, 'TASK_NOT_IN_GAME');
+    expectError(await verdict(s, c.id, { taskId: other.taskIds[0] }), 422, 'VALIDATION_ERROR');
+    expectError(await verdict(s, c.id, { transcription: '4' }), 422, 'VALIDATION_ERROR');
   });
   it('R07 вердикт уходит на оценивание, но не содержит начисленных баллов', async () => {
     const s = await setup(), c = await checked(s);
@@ -185,14 +188,21 @@ describe('ТЗ: проверка и апелляции', { concurrency: false },
     const s = await setup({ submissionOpen: false, appealOpen: true }), c = await checked(s);
     expectStatus(await manifest(s, [c.receiptId]), 200); assert.equal((await completion(s)).complete, false);
   });
-  it('R26 manifest чужого цикла отклоняется', async () => {
-    const s = await setup({ submissionOpen: false, appealOpen: false });
-    expectError(await manifest(s, [], key()), 409, 'CYCLE_MISMATCH');
-    assert.equal((await completion(s)).complete, false);
+  it('R26 старый manifest не закрывает игру после разрешения поздней сдачи', async () => {
+    const s = await setup({ submissionOpen: false, appealOpen: false }), c = await checked(s);
+    const oldVersion = (await currentGame(s)).admissionVersion;
+    expectStatus(await manifest(s, [c.receiptId], oldVersion), 200);
+    await eventually(() => completion(s), r => r.complete);
+    await fixture('PATCH', `/__test/scenarios/${s.game.id}`, { lateSubmissionAllowed: true });
+    expectStatus(await manifest(s, [c.receiptId], oldVersion), 200);
+    const state = await completion(s);
+    assert.equal(state.complete, false); assert.equal(state.acceptingSubmissions, true);
+    assert.ok(state.admissionVersion > oldVersion);
+    assert.equal(expectStatus(await api('GET', `/checks/${c.id}`), 200).verdict, 'incorrect');
   });
   it('R27 административная коррекция доступна в домино и не возвращает квоту', async () => {
     const s = await setup({ system: 'domino' }), c = await checked(s);
-    const changed = expectStatus(await api('POST', `/checks/${c.id}/corrections`, { body: { verdict: 'correct', transcription: '4', reason: 'Исправление администратором' } }), 200);
+    const changed = expectStatus(await api('POST', `/checks/${c.id}/corrections`, { body: { verdict: 'correct', reason: 'Исправление администратором' } }), 200);
     assert.equal(changed.originalVerdict, 'incorrect'); assert.equal(changed.verdict, 'correct'); assert.equal(changed.history.length, 2);
     assert.equal((await quota(s)).used, 0);
     const corrected = await eventually(() => events(s.game.id, 'VerdictCorrected'), e => e.length > 0);
@@ -236,4 +246,56 @@ describe('ТЗ: проверка и апелляции', { concurrency: false },
     await eventually(() => events(s.game.id, 'VerdictIssued'), e => e.length > 0);
     assert.equal((await events(s.game.id, 'VerdictIssued')).length, 1);
   });
+  it('R33 в работе сразу есть снимок, номер задачи и серверный эталон', async () => {
+    const s = await setup(), c = expectStatus(await ingest(s, 2), 201);
+    const assigned = expectStatus(await claim(c.id), 200);
+    const task = expectStatus(await fixture('GET', `/tasks/${s.receipts[2].taskId}`), 200);
+    assert.equal(assigned.imageRef, s.receipts[2].imageRef);
+    assert.equal(assigned.taskId, s.receipts[2].taskId); assert.equal(assigned.taskNumber, s.receipts[2].taskNumber);
+    assert.equal(assigned.referenceAnswer, task.referenceAnswer); assert.equal(assigned.referenceAnswer, '5');
+  });
+  it('R34 нечитаемый текст оценивается кнопкой «неверно», без особого состояния', async () => {
+    const s = await setup(), c = expectStatus(await ingest(s), 201); expectStatus(await claim(c.id), 200);
+    const result = expectStatus(await verdict(s, c.id), 200);
+    assert.equal(result.verdict, 'incorrect'); assert.equal(result.status, 'checked');
+  });
+  it('R35 новый тип игры использует возможности профиля без изменения ядра', async () => {
+    for (const appealsAllowed of [true, false]) {
+      const s = await setup({ system: 'new-olympiad-v4', appealsAllowed, modifiersAllowed: false });
+      const c = await checked(s);
+      if (appealsAllowed) expectStatus(await appeal(c.id), 201);
+      else expectError(await appeal(c.id), 409, 'APPEAL_NOT_ALLOWED');
+    }
+  });
+  it('R36 поздняя сдача не сбрасывает квоту и запрет повторной апелляции', async () => {
+    const s = await setup({ quota: 2 }), c = await checked(s), a = await claimedAppeal(c.id);
+    expectStatus(await resolve(a.id, { outcome: 'upheld' }), 200);
+    await expire(s);
+    await fixture('PATCH', `/__test/scenarios/${s.game.id}`, { lateSubmissionAllowed: true, appealOpen: true });
+    assert.equal((await quota(s)).used, 1);
+    expectError(await appeal(c.id), 409, 'APPEAL_ALREADY_USED');
+    assert.equal((await completion(s)).complete, false);
+  });
+  it('R37 новый итог приёма включает старые и поздние ответы одной игры', async () => {
+    const s = await setup({ submissionOpen: false, appealOpen: false }), first = await checked(s);
+    expectStatus(await manifest(s, [first.receiptId]), 200);
+    await eventually(() => completion(s), r => r.complete);
+    await fixture('PATCH', `/__test/scenarios/${s.game.id}`, { lateSubmissionAllowed: true });
+    const e = receiptEvent(s, 2); e.data.admissionVersion = (await currentGame(s)).admissionVersion;
+    e.data.acceptedAt = new Date().toISOString();
+    const second = expectStatus(await ingest(s, 2, { body: e }), 201);
+    await fixture('PATCH', `/__test/scenarios/${s.game.id}`, { lateSubmissionAllowed: false });
+    expectStatus(await manifest(s, [first.receiptId, second.receiptId]), 200);
+    assert.equal((await completion(s)).complete, false);
+    expectStatus(await claim(second.id), 200); expectStatus(await verdict(s, second.id), 200);
+    await eventually(() => completion(s), r => r.complete);
+    const list = expectStatus(await api('GET', `/checks?gameId=${s.game.id}`, { role: 'checker' }), 200).items;
+    assert.equal(list.length, 2); assert.ok(list.some(c => c.id === first.id));
+  });
+  it('R38 неизменённый вердикт не считается исправлением ошибки жюри', async () => {
+    const s = await setup(), c = await checked(s), a = await claimedAppeal(c.id);
+    expectError(await resolve(a.id, { verdict: 'incorrect' }), 422, 'VERDICT_UNCHANGED');
+    assert.equal((await quota(s)).used, 1);
+  });
+
 });
