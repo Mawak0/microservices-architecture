@@ -24,7 +24,7 @@ export function createFixtureServer() {
       system: o.system, status: o.submissionOpen ? 'running' : 'submission-closed',
       submissionDeadline: deadline(o.submissionOpen), appealDeadline: deadline(o.appealOpen),
       finishDeadline: deadline(!o.finishExpired), appealLimit: o.quota,
-      materialSettings: { answerBlankCount: 3, taskCardCount: 3, taskCardsShared: o.system === 'domino' }
+      materialSettings: { answerBlankCount: o.answerBlankCount, taskCardCount: o.taskCardCount, taskCardsShared: o.system === 'domino' }
     });
     for (const id of [s.teamId, s.otherTeamId]) teams.get(id).admitted = o.admitted;
   }
@@ -34,7 +34,7 @@ export function createFixtureServer() {
     const game = { id: gameId, tournamentId: randomUUID(), cycleId: randomUUID(), taskIds };
     const s = { game, teamId, otherTeamId, taskIds, blankIds: [], qrTokens: [], receipts: [], options: {
       system: 'bonuses', submissionOpen: true, appealOpen: true, finishExpired: false,
-      quota: 2, admitted: true, storageAvailable: true, ...options
+      quota: 2, admitted: true, storageAvailable: true, answerBlankCount: 3, taskCardCount: 3, ...options
     } };
     teams.set(teamId, { id: teamId, gameId, admitted: true });
     teams.set(otherTeamId, { id: otherTeamId, gameId, admitted: true });
