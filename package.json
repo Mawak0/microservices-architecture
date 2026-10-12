@@ -7,5 +7,11 @@
     "fixtures": "node test-support/fixtures.mjs",
     "test:acceptance": "node --test --test-concurrency=1 tests/acceptance.test.mjs"
   },
-  "engines": { "node": ">=22" }
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1"
+  }
 }
