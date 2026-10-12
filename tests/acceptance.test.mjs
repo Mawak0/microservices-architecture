@@ -15,7 +15,7 @@ async function readyJob(id) {
 describe('ТЗ: бланки и печатные материалы', { concurrency: false }, () => {
   before(requireService);
   it('M01 комплект использует настройки количества', async () => {
-    const s = await scenario(), kit = expectStatus(await prepare(s), 201);
+    const s = await scenario({ answerBlankCount: 7, taskCardCount: 2 }), kit = expectStatus(await prepare(s), 201);
     assert.equal(kit.gameId, s.game.id); assert.equal(kit.teamId, s.teamId);
     assert.equal(kit.answerBlankCount, s.game.materialSettings.answerBlankCount);
     assert.equal(kit.taskCardCount, s.game.materialSettings.taskCardCount);
@@ -129,5 +129,18 @@ describe('ТЗ: бланки и печатные материалы', { concurre
     const s = await scenario(); await prepare(s);
     const b = expectStatus(await issue(s, 1), 201).blanks[0];
     expectStatus(await api('POST', '/print-jobs', { role: 'multi', body: { gameId: s.game.id, teamId: s.teamId, blankIds: [b.id], taskIds: [] } }), 202);
+  });
+  it('M18 администратор формирует единый PDF всей игры для разных команд', async () => {
+    const s = await scenario(), other = { ...s, teamId: s.otherTeamId };
+    await prepare(s); await prepare(other);
+    const blanks = [...expectStatus(await issue(s, 2), 201).blanks, ...expectStatus(await issue(other, 2), 201).blanks];
+    const body = { gameId: s.game.id, blankIds: blanks.map(b => b.id), taskIds: s.taskIds };
+    const job = expectStatus(await api('POST', '/print-jobs', { body }), 202);
+    const done = await readyJob(job.id); assert.equal(done.teamId, null);
+    assert.deepEqual(done.manifest.filter(m => m.kind === 'answer-blank').map(m => m.id).sort(), blanks.map(b => b.id).sort());
+  });
+  it('M19 задача другой игры не попадает в печатные материалы', async () => {
+    const s = await scenario(), other = await scenario(); await prepare(s);
+    expectError(await api('POST', '/print-jobs', { body: { gameId: s.game.id, teamId: s.teamId, blankIds: [], taskIds: other.taskIds } }), 422, 'MATERIAL_SCOPE_MISMATCH');
   });
 });
