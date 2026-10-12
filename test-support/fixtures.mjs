@@ -13,39 +13,53 @@ export function createFixtureServer() {
   const scenarios = new Map(), teams = new Map(), tasks = new Map();
   const blanks = new Map(), receipts = new Map(), images = new Map(), events = new Map();
   let sinkAvailable = true;
+  const builtinProfiles = {
+    bonuses: { appealsAllowed: true, modifiersAllowed: true, taskCardsShared: false },
+    domino: { appealsAllowed: false, modifiersAllowed: false, taskCardsShared: true },
+    'tic-tac-toe': { appealsAllowed: true, modifiersAllowed: false, taskCardsShared: false }
+  };
   const reply = (res, status, body) => {
     res.writeHead(status, { 'content-type': 'application/json' }); res.end(JSON.stringify(body));
   };
   const error = (res, status, code) => reply(res, status, { code, message: code });
   function update(s, changes) {
+    const changed = ['submissionOpen', 'lateSubmissionAllowed'].some(k => k in changes && changes[k] !== s.options[k]);
+    if (changed) s.game.admissionVersion++;
     Object.assign(s.options, changes);
     const o = s.options, now = Date.now(), deadline = open => new Date(now + (open ? 3600000 : -3600000)).toISOString();
     Object.assign(s.game, {
       system: o.system, status: o.submissionOpen ? 'running' : 'submission-closed',
       submissionDeadline: deadline(o.submissionOpen), appealDeadline: deadline(o.appealOpen),
-      finishDeadline: deadline(!o.finishExpired), appealLimit: o.quota,
-      materialSettings: { answerBlankCount: o.answerBlankCount, taskCardCount: o.taskCardCount, taskCardsShared: o.system === 'domino' }
+      finishDeadline: deadline(!o.finishExpired), lateSubmissionAllowed: o.lateSubmissionAllowed,
+      capabilities: { appealsAllowed: o.appealsAllowed, modifiersAllowed: o.modifiersAllowed },
+      materialSettings: { answerBlankCount: o.answerBlankCount, taskCardCount: o.taskCardCount, taskCardsShared: o.taskCardsShared,
+        templateKey: o.templateKey, templateParameters: { heading: o.templateHeading } }
     });
     for (const id of [s.teamId, s.otherTeamId]) teams.get(id).admitted = o.admitted;
   }
   function scenario(options) {
     const gameId = randomUUID(), teamId = randomUUID(), otherTeamId = randomUUID();
     const taskIds = Array.from({ length: 3 }, () => randomUUID());
-    const game = { id: gameId, tournamentId: randomUUID(), cycleId: randomUUID(), taskIds };
+    const game = { id: gameId, tournamentId: randomUUID(), admissionVersion: 1, taskIds, taskAssignments: taskIds.map((taskId, i) => ({ taskId, taskNumber: String(i + 1) })) };
     const s = { game, teamId, otherTeamId, taskIds, blankIds: [], qrTokens: [], receipts: [], options: {
       system: 'bonuses', submissionOpen: true, appealOpen: true, finishExpired: false,
-      quota: 2, admitted: true, storageAvailable: true, answerBlankCount: 3, taskCardCount: 3, ...options
+      quota: 2, admitted: true, storageAvailable: true, answerBlankCount: 3, taskCardCount: 3,
+      lateSubmissionAllowed: false, appealsAllowed: false, modifiersAllowed: false, taskCardsShared: false,
+      ...(builtinProfiles[options.system || 'bonuses'] || {}),
+      templateKey: `${options.system || 'bonuses'}/v1`, templateHeading: 'Бланк ответа', ...options
     } };
     teams.set(teamId, { id: teamId, gameId, admitted: true });
     teams.set(otherTeamId, { id: otherTeamId, gameId, admitted: true });
-    taskIds.forEach((id, i) => tasks.set(id, { id, statement: `Задача ${i + 1}: вычислите 2 + 2`, referenceAnswer: '4' }));
+    taskIds.forEach((id, i) => tasks.set(id, { id, statement: `Задача ${i + 1}: вычислите 2 + ${i + 2}`, referenceAnswer: String(i + 4) }));
     update(s, {});
     for (let i = 0; i < 8; i++) {
       const id = randomUUID(), qrToken = `fixture-signed:${id}`;
+      const taskIndex = i % 4 < 2 ? 0 : i % 4 - 1;
       const b = { id, number: i + 1, gameId, teamId: i < 4 ? teamId : otherTeamId,
-        cycleId: game.cycleId, qrToken, modifier: s.options.system === 'bonuses' ? { kind: 'add', value: 3 } : null };
+        taskId: taskIds[taskIndex], taskNumber: String(taskIndex + 1), qrToken,
+        modifier: s.options.modifiersAllowed ? { kind: 'add', value: 3 } : null };
       blanks.set(qrToken, b); s.blankIds.push(id); s.qrTokens.push(qrToken);
-      const receipt = { id: randomUUID(), blankId: id, gameId, cycleId: game.cycleId, teamId: b.teamId,
+      const receipt = { id: randomUUID(), blankId: id, gameId, admissionVersion: game.admissionVersion, teamId: b.teamId, taskId: b.taskId, taskNumber: b.taskNumber,
         imageRef: `fixture://images/${id}`, acceptedAt: new Date(Date.now() - 7200000).toISOString() };
       receipts.set(receipt.id, receipt); s.receipts.push(receipt);
     }
@@ -93,6 +107,15 @@ export function createFixtureServer() {
       if (req.method === 'GET' && path.startsWith('/images/')) {
         const img = images.get(path.split('/').at(-1)); if (!img) return error(res, 404, 'NOT_FOUND');
         res.writeHead(200, { 'content-type': img.mediaType }); return res.end(Buffer.from(img.dataBase64, 'base64'));
+      }
+      if (req.method === 'GET' && path.startsWith('/material-templates/')) {
+        const templateKey = decodeURIComponent(path.slice('/material-templates/'.length));
+        if (![...scenarios.values()].some(s => s.game.materialSettings.templateKey === templateKey))
+          return error(res, 404, 'TEMPLATE_NOT_FOUND');
+        return reply(res, 200, { key: templateKey, format: 'declarative-v1',
+          answerSheet: [{ kind: 'field', field: 'heading' }, { kind: 'field', field: 'taskNumber' }, { kind: 'qr' }, { kind: 'answer-area' }],
+          taskSheet: [{ kind: 'field', field: 'taskNumber' }, { kind: 'field', field: 'statement' }]
+        });
       }
       if (req.method === 'GET') {
         const [collection, id] = path.slice(1).split('/');

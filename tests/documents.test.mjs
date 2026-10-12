@@ -66,8 +66,8 @@ test('Валидатор не пропускает неполное событи
     headers: new Headers({ 'content-type': 'application/json' }) });
   const type = load(path.join(dir, 'events.schema.json')).properties.type.enum[0];
   validateEvent({ eventId: 'event-1', type, aggregateId: 'aggregate-1', occurredAt: new Date().toISOString(), data: {
-    gameId: 'game-1', cycleId: 'cycle-1', teamId: 'team-1', kitId: 'kit-1', receiptId: 'receipt-1', blankId: 'blank-1',
-    imageRef: 'fixture://image-1', acceptedAt: new Date().toISOString(), checkId: 'check-1', taskId: 'task-1', verdict: 'correct', revision: 1
+    gameId: 'game-1', admissionVersion: 1, teamId: 'team-1', kitId: 'kit-1', receiptId: 'receipt-1', blankId: 'blank-1',
+    imageRef: 'fixture://image-1', acceptedAt: new Date().toISOString(), checkId: 'check-1', taskId: 'task-1', taskNumber: '1', verdict: 'correct', revision: 1
   } });
 });
 test('Каждому требованию трассировки соответствует исполняемый сценарий', () => {
