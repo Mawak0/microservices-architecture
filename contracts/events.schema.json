@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Review events",
+  "allOf": [{ "$ref": "./common.json#/$defs/Event" }],
+  "properties": {
+    "type": { "enum": ["VerdictIssued", "VerdictCorrected", "AppealOpened", "AppealResolved", "AppealUsageReturned", "AllChecksCompleted"] },
+    "data": { "type": "object", "required": ["gameId", "cycleId"], "properties": { "gameId": { "type": "string" }, "cycleId": { "type": "string" } } }
+  },
+  "oneOf": [
+    { "properties": { "type": { "enum": ["VerdictIssued", "VerdictCorrected"] }, "data": { "required": ["checkId", "receiptId", "blankId", "teamId", "taskId", "verdict", "revision"],
+      "properties": { "checkId": { "type": "string" }, "receiptId": { "type": "string" }, "blankId": { "type": "string" }, "teamId": { "type": "string" }, "taskId": { "type": "string" }, "verdict": { "enum": ["correct", "incorrect"] }, "revision": { "type": "integer", "minimum": 1 } } } } },
+    { "properties": { "type": { "const": "AppealOpened" }, "data": { "required": ["appealId", "checkId", "teamId", "taskId"],
+      "properties": { "appealId": { "type": "string" }, "checkId": { "type": "string" }, "teamId": { "type": "string" }, "taskId": { "type": "string" } } } } },
+    { "properties": { "type": { "const": "AppealResolved" }, "data": { "required": ["appealId", "checkId", "teamId", "taskId", "outcome"],
+      "properties": { "appealId": { "type": "string" }, "checkId": { "type": "string" }, "teamId": { "type": "string" }, "taskId": { "type": "string" }, "outcome": { "enum": ["upheld", "jury-error-corrected"] } } } } },
+    { "properties": { "type": { "const": "AppealUsageReturned" }, "data": { "required": ["appealId", "amount"], "properties": { "appealId": { "type": "string" }, "amount": { "const": 1 } } } } },
+    { "properties": { "type": { "const": "AllChecksCompleted" }, "data": { "required": ["receiptIds"], "properties": { "receiptIds": { "type": "array", "uniqueItems": true, "items": { "type": "string" } } } } } }
+  ]
+}
