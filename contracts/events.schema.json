@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Materials events",
+  "allOf": [{ "$ref": "./common.json#/$defs/Event" }],
+  "properties": {
+    "type": { "enum": ["KitPrepared", "BlanksIssued", "PrintPdfPrepared"] },
+    "data": { "type": "object", "required": ["gameId", "teamId"], "properties": { "gameId": { "type": "string" }, "teamId": { "type": "string" } } }
+  },
+  "oneOf": [
+    { "properties": { "type": { "const": "KitPrepared" }, "data": { "required": ["kitId"], "properties": { "kitId": { "type": "string" } } } } },
+    { "properties": { "type": { "const": "BlanksIssued" }, "data": { "required": ["blankIds"], "properties": { "blankIds": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string" } } } } } },
+    { "properties": { "type": { "const": "PrintPdfPrepared" }, "data": { "required": ["printJobId", "artifactUrl"], "properties": { "printJobId": { "type": "string" }, "artifactUrl": { "type": "string" } } } } }
+  ]
+}
