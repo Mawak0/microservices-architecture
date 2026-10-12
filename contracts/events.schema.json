@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Intake events",
+  "allOf": [{ "$ref": "./common.json#/$defs/Event" }],
+  "properties": {
+    "type": { "enum": ["ReceiptAccepted", "IntakeClosed"] },
+    "data": { "type": "object", "required": ["gameId", "cycleId"], "properties": { "gameId": { "type": "string" }, "cycleId": { "type": "string" } } }
+  },
+  "oneOf": [
+    { "properties": { "type": { "const": "ReceiptAccepted" }, "data": {
+      "required": ["receiptId", "blankId", "teamId", "imageRef", "acceptedAt"],
+      "properties": { "receiptId": { "type": "string" }, "blankId": { "type": "string" }, "teamId": { "type": "string" },
+        "imageRef": { "type": "string" }, "acceptedAt": { "type": "string", "format": "date-time" } }
+    } } },
+    { "properties": { "type": { "const": "IntakeClosed" }, "data": {
+      "required": ["receiptIds"], "properties": { "receiptIds": { "type": "array", "uniqueItems": true, "items": { "type": "string" } } }
+    } } }
+  ]
+}
