@@ -1,18 +1,19 @@
 {
   "openapi": "3.1.0",
+  "servers": [{ "url": "/", "description": "Адрес экземпляра задаётся при развёртывании" }],
   "info": { "title": "Sapientum Intake Service", "version": "0.1.0", "description": "Контракт приёма. Реализация отсутствует. Ошибки и правила — SERVICE.md и CONTRACTS.md." },
   "security": [{ "bearerAuth": [] }],
   "paths": {
     "/intake-sessions/{gameId}": {
       "parameters": [{ "in": "path", "name": "gameId", "required": true, "schema": { "type": "string" } }],
       "put": {
-        "operationId": "openIntakeSession", "x-roles": ["admin", "integration"],
+        "operationId": "openIntakeSession", "summary": "Открыть сеанс приёма игры", "x-roles": ["admin", "integration"],
         "description": "Синхронизировать открытый сеанс с актуальным состоянием игры. Не открывает закрытый цикл заново.",
         "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
         "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CycleRequest" } } } },
         "responses": { "200": { "description": "Сеанс готов", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Session" } } } }, "default": { "$ref": "#/components/responses/Error" } }
       },
-      "get": { "operationId": "getIntakeSession", "x-roles": ["admin", "observer", "integration"], "responses": {
+      "get": { "operationId": "getIntakeSession", "summary": "Узнать состояние приёма", "x-roles": ["admin", "observer", "integration"], "responses": {
         "200": { "description": "Состояние сеанса", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Session" } } } },
         "default": { "$ref": "#/components/responses/Error" }
       } }
@@ -20,7 +21,7 @@
     "/intake-sessions/{gameId}/close": {
       "parameters": [{ "in": "path", "name": "gameId", "required": true, "schema": { "type": "string" } }],
       "post": {
-        "operationId": "closeIntakeSession", "x-roles": ["admin", "integration"],
+        "operationId": "closeIntakeSession", "summary": "Зафиксировать полный итог приёма", "x-roles": ["admin", "integration"],
         "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
         "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CycleRequest" } } } },
         "responses": { "200": { "description": "Приём закрыт, полный manifest зафиксирован", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Session" } } } }, "default": { "$ref": "#/components/responses/Error" } }
@@ -28,7 +29,7 @@
     },
     "/receipts": {
       "post": {
-        "operationId": "acceptBlank", "x-roles": ["admin", "observer"],
+        "operationId": "acceptBlank", "summary": "Принять фотографию бланка", "x-roles": ["admin", "observer"],
         "description": "Атомарный бизнес-эффект приёма одного бланка. 201 только после надёжного сохранения снимка и факта приёма.",
         "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
         "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SubmitBlank" } } } },
@@ -41,7 +42,7 @@
     },
     "/receipts/{id}": {
       "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "string" } }],
-      "get": { "operationId": "getReceipt", "x-roles": ["admin", "observer", "checker", "integration"], "responses": {
+      "get": { "operationId": "getReceipt", "summary": "Прочитать квитанцию приёма", "x-roles": ["admin", "observer", "checker", "integration"], "responses": {
         "200": { "description": "Сохранённая квитанция", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Receipt" } } } },
         "default": { "$ref": "#/components/responses/Error" }
       } }
