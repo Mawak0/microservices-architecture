@@ -14,9 +14,10 @@
 | Метод и путь | Назначение |
 |---|---|
 | `POST /auth/introspect` `{token}` | `{active,userId,roles}`; тестовый провайдер идентификации |
-| `GET /games/{id}` | Система, cycleId, состояние, сроки, настройки комплекта, taskIds |
+| `GET /games/{id}` | Расширяемый system, admissionVersion, lateSubmissionAllowed, capabilities, сроки, настройки, taskAssignments |
 | `GET /teams/{id}` | Команда, допуск к игре |
 | `GET /tasks/{id}` | Условие и эталон (только для доверенного адаптера) |
+| `GET /material-templates/{encodedKey}` | Декларативный шаблон; адаптер репозитория сервиса материалов |
 | `POST /blank-verifications` `{qrToken}` | Проверенный бланк или 422 `INVALID_QR` (для приёма) |
 | `GET /receipts/{id}` | Уже принятый ответ для восстановления доверенных данных проверки |
 | `POST /images` `{receiptId,blankId,dataBase64,mediaType}` | Сохранить снимок, ответ `{imageRef}`; может вернуть 503 |
@@ -35,7 +36,8 @@
 
 - `POST /__test/scenarios` с параметрами `system`, `submissionOpen`, `appealOpen`,
   `finishExpired`, `quota`, `admitted`, `storageAvailable`, `answerBlankCount`,
-  `taskCardCount` создаёт изолированные
+  `taskCardCount`, `lateSubmissionAllowed`, `appealsAllowed`, `modifiersAllowed`,
+  `taskCardsShared`, `templateKey`, `templateHeading` создаёт изолированные
   игру, две команды, три задачи, восемь QR и восемь уже принятых ответов-заготовок.
 - `PATCH /__test/scenarios/{gameId}` обновляет только внешние условия этого сценария.
 - `GET /__test/events?gameId=...` возвращает сообщения, принятые стендом.
@@ -47,3 +49,23 @@
 Для тестирования задержанной доставки у заготовок `acceptedAt` лежит до дедлайна.
 Строка `fixture-signed:<UUID>` имитирует результат проверки подлинности QR, но не
 предлагается как способ подписи реального QR.
+
+## Данные редакции 0.2
+
+Бланк и квитанция содержат taskId/taskNumber до проверки. Первые два бланка
+каждой команды относятся к одной задаче для теста запрета повторной апелляции.
+Эталоны задач различаются. `quota` — только параметр подготовки теста:
+в GET /games лимита нет, его устанавливает сервис проверки.
+
+Изменение submissionOpen/lateSubmissionAllowed увеличивает admissionVersion,
+но не создаёт игру и не сбрасывает ответы/квоту/бланки. Закрытие по дедлайну в
+реальной системе тоже обновляет версию режима приёма.
+
+Неизвестный ранее system не требует изменения ядра сервисов. Его capabilities
+и templateKey заданы данными. Для новых профилей возможности по умолчанию выключены.
+
+Тестовый формат declarative-v1 содержит answerSheet/taskSheet — последовательности
+блоков field (heading/taskNumber/statement), qr и answer-area. Печатная проекция
+не содержит referenceAnswer; произвольный JS и доступ к серверным объектам
+не разрешены. Сложные макеты добавляются через версию формата/адаптер рендерера,
+а не через ветвление по названию игры.
