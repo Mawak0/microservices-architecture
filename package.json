@@ -1,0 +1,11 @@
+{
+  "name": "sapientum-service-contract",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/documents.test.mjs tests/harness.test.mjs",
+    "fixtures": "node test-support/fixtures.mjs",
+    "test:acceptance": "node --test --test-concurrency=1 tests/acceptance.test.mjs"
+  },
+  "engines": { "node": ">=22" }
+}

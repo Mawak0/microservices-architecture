@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "Id": { "type": "string", "minLength": 1 },
+    "Error": {
+      "type": "object", "required": ["code", "message"],
+      "properties": { "code": { "type": "string" }, "message": { "type": "string" } }
+    },
+    "Modifier": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "value"],
+      "properties": { "kind": { "enum": ["add", "multiply"] }, "value": { "type": "number" } }
+    },
+    "Event": {
+      "type": "object", "required": ["eventId", "type", "occurredAt", "aggregateId", "data"],
+      "properties": {
+        "eventId": { "$ref": "#/$defs/Id" }, "type": { "type": "string" },
+        "occurredAt": { "type": "string", "format": "date-time" },
+        "aggregateId": { "$ref": "#/$defs/Id" }, "data": { "type": "object" }
+      }
+    }
+  }
+}
