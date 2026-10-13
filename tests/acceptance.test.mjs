@@ -2,12 +2,15 @@ import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
 import { api, fixture, scenario, requireService, expectStatus, expectError, key, eventually, events, pngBase64 } from '../test-support/client.mjs';
 
-const open = s => api('PUT', `/intake-sessions/${s.game.id}`, { body: { cycleId: s.game.cycleId } });
+const game = async s => expectStatus(await fixture('GET', `/games/${s.game.id}`), 200);
+const open = async s => api('PUT', `/intake-sessions/${s.game.id}`, { body: { admissionVersion: (await game(s)).admissionVersion } });
 async function setup(options) { const s = await scenario(options); expectStatus(await open(s), 200); return s; }
 const submit = (s, index = 0, changes = {}, options = {}) => api('POST', '/receipts', { role: 'observer', body: {
   qrToken: s.qrTokens[index], imageBase64: pngBase64, imageMediaType: 'image/png', legibilityConfirmed: true, ...changes
 }, ...options });
-const close = (s, changes = {}) => api('POST', `/intake-sessions/${s.game.id}/close`, { role: 'system', body: { cycleId: s.game.cycleId, ...changes } });
+const close = async (s, changes = {}) => api('POST', `/intake-sessions/${s.game.id}/close`, {
+  role: 'system', body: { admissionVersion: (await game(s)).admissionVersion, ...changes }
+});
 const expire = s => fixture('PATCH', `/__test/scenarios/${s.game.id}`, { submissionOpen: false });
 
 describe('ТЗ: приём бланков', { concurrency: false }, () => {
@@ -15,7 +18,8 @@ describe('ТЗ: приём бланков', { concurrency: false }, () => {
   it('I01 подтверждение содержит сохранённый снимок и проверенную принадлежность', async () => {
     const s = await setup(), r = expectStatus(await submit(s), 201);
     assert.equal(r.blankId, s.blankIds[0]); assert.equal(r.teamId, s.teamId); assert.equal(r.gameId, s.game.id);
-    assert.equal(r.cycleId, s.game.cycleId); assert.ok(r.imageRef); assert.ok(Number.isFinite(Date.parse(r.acceptedAt)));
+    assert.equal(r.admissionVersion, s.game.admissionVersion);
+    assert.equal(r.taskId, s.receipts[0].taskId); assert.equal(r.taskNumber, s.receipts[0].taskNumber); assert.ok(r.imageRef); assert.ok(Number.isFinite(Date.parse(r.acceptedAt)));
     assert.deepEqual(expectStatus(await api('GET', `/receipts/${r.id}`), 200), r);
     const images = expectStatus(await fixture('GET', `/__test/images?gameId=${s.game.id}`), 200);
     assert.ok(images.some(i => i.imageRef === r.imageRef && i.dataBase64 === pngBase64));
@@ -71,7 +75,8 @@ describe('ТЗ: приём бланков', { concurrency: false }, () => {
     const list = await eventually(() => events(s.game.id, 'ReceiptAccepted'), e => e.some(e => e.data.receiptId === r.id));
     const e = list.find(e => e.data.receiptId === r.id);
     assert.equal(e.data.imageRef, r.imageRef); assert.equal(e.data.blankId, r.blankId);
-    assert.equal(e.data.cycleId, r.cycleId); assert.equal(e.data.teamId, r.teamId);
+    assert.equal(e.data.admissionVersion, r.admissionVersion);
+    assert.equal(e.data.taskId, r.taskId); assert.equal(e.data.taskNumber, r.taskNumber); assert.equal(e.data.teamId, r.teamId);
     assert.ok(!JSON.stringify(e).includes(pngBase64), 'Событие не должно нести тяжёлое фото');
   });
   it('I11 закрытие фиксирует полный список и запрещает новые ответы', async () => {
@@ -82,7 +87,7 @@ describe('ТЗ: приём бланков', { concurrency: false }, () => {
     expectError(await submit(s, 3), 409, 'INTAKE_CLOSED');
     const list = await eventually(() => events(s.game.id, 'IntakeClosed'), e => e.length > 0);
     assert.deepEqual([...list[0].data.receiptIds].sort(), accepted.map(r => r.id).sort());
-    assert.equal(list[0].data.cycleId, s.game.cycleId);
+    assert.equal(list[0].data.admissionVersion, (await game(s)).admissionVersion);
   });
   it('I12 manifest учитывает ответы, ещё не доставленные на проверку', async t => {
     const s = await setup(); t.after(() => fixture('PUT', '/__test/event-sink', { available: true }));
@@ -116,19 +121,24 @@ describe('ТЗ: приём бланков', { concurrency: false }, () => {
     expectError(await api('GET', `/receipts/${r.id}`, { role: 'organizer' }), 403, 'FORBIDDEN');
     expectError(await api('GET', `/receipts/${r.id}`, { role: null }), 401, 'UNAUTHENTICATED');
   });
-  it('I18 бонусный бланк принимается без распознанных номера задачи и ответа', async () => {
+  it('I18 бонусный бланк уже связан с задачей и не требует ручного ввода', async () => {
     const s = await setup({ system: 'bonuses' }); expectStatus(await submit(s), 201);
   });
-  it('I19 старый cycleId не закрывает актуальный сеанс', async () => {
+  it('I19 устаревшая версия режима приёма не закрывает актуальное разрешение', async () => {
     const s = await setup(); await expire(s);
-    expectError(await close(s, { cycleId: key() }), 409, 'CYCLE_MISMATCH');
+    expectError(await close(s, { admissionVersion: s.game.admissionVersion }), 409, 'ADMISSION_VERSION_MISMATCH');
     expectStatus(await close(s), 200);
   });
-  it('I20 закрытый цикл не открывается повторным PUT', async () => {
-    const s = await setup(); await expire(s); expectStatus(await close(s), 200);
-    await fixture('PATCH', `/__test/scenarios/${s.game.id}`, { submissionOpen: true });
+  it('I20 повторное открытие разрешает позднюю сдачу, но не повторный бланк', async () => {
+    const s = await setup(), first = expectStatus(await submit(s), 201);
+    await expire(s); expectStatus(await close(s), 200);
     expectError(await open(s), 409, 'INTAKE_CLOSED');
-    expectError(await submit(s), 409, 'INTAKE_CLOSED');
+    await fixture('PATCH', `/__test/scenarios/${s.game.id}`, { lateSubmissionAllowed: true });
+    const opened = expectStatus(await open(s), 200);
+    assert.equal(opened.gameId, s.game.id); assert.ok(opened.receiptIds.includes(first.id));
+    expectError(await submit(s), 409, 'BLANK_ALREADY_ACCEPTED');
+    expectStatus(await submit(s, 1), 201);
+    assert.deepEqual(expectStatus(await api('GET', `/receipts/${first.id}`), 200), first);
   });
   it('I21 приём не требует синхронного вердикта и не содержит его', async () => {
     const s = await setup(), r = expectStatus(await submit(s), 201);
@@ -137,4 +147,32 @@ describe('ТЗ: приём бланков', { concurrency: false }, () => {
   it('I22 техническое закрытие до наступления срока отклоняется', async () => {
     const s = await setup(); expectError(await close(s), 409, 'DEADLINE_NOT_REACHED');
   });
+  it('I23 задача определяется из QR-реестра, а не из данных наблюдателя', async () => {
+    const s = await setup(), r = expectStatus(await submit(s, 2), 201);
+    assert.equal(r.taskId, s.taskIds[1]); assert.equal(r.taskNumber, '2');
+    expectError(await submit(s, 3, { taskId: s.taskIds[0] }), 422, 'VALIDATION_ERROR');
+    assert.equal(r.referenceAnswer, undefined);
+  });
+  it('I24 новый итог приёма содержит старые и поздние ответы одной игры', async () => {
+    const s = await setup(), first = expectStatus(await submit(s), 201);
+    await expire(s); const oldManifest = expectStatus(await close(s), 200);
+    await fixture('PATCH', `/__test/scenarios/${s.game.id}`, { lateSubmissionAllowed: true });
+    expectStatus(await open(s), 200); const late = expectStatus(await submit(s, 2), 201);
+    await fixture('PATCH', `/__test/scenarios/${s.game.id}`, { lateSubmissionAllowed: false });
+    const latest = expectStatus(await close(s), 200);
+    assert.ok(latest.admissionVersion > oldManifest.admissionVersion);
+    assert.deepEqual([...latest.receiptIds].sort(), [first.id, late.id].sort());
+    expectError(await submit(s, 3), 409, 'INTAKE_CLOSED');
+  });
+  it('I25 приём нового типа игры использует тот же контракт', async () => {
+    const s = await setup({ system: 'new-olympiad-v4', modifiersAllowed: false, appealsAllowed: true });
+    const r = expectStatus(await submit(s), 201);
+    assert.equal(r.gameId, s.game.id); assert.equal(r.taskId, s.receipts[0].taskId);
+  });
+  it('I26 истёкший дедлайн не закрывает явно разрешённую позднюю сдачу', async () => {
+    const s = await setup({ submissionOpen: false, lateSubmissionAllowed: true });
+    expectStatus(await submit(s), 201);
+    expectError(await close(s), 409, 'LATE_ADMISSION_ACTIVE');
+  });
+
 });
