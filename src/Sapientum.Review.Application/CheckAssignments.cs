@@ -41,14 +41,14 @@ public sealed class CheckAssignments(ITransactions transactions, IClock clock, L
         }, cancellationToken);
     }
     public async Task<Outcome<CheckView>> Release(CommandIdentity identity, string id, string token,
-        CancellationToken cancellationToken)
+        bool mayReleaseOtherOwner, CancellationToken cancellationToken)
     {
         var replay = await transactions.Replay<CheckView>(identity, cancellationToken);
         if (replay is not null) return replay;
         var now = await clock.Now(cancellationToken);
         return await transactions.Run(identity, s =>
         {
-            var c = s.Check(id); c.Release(identity.ActorId, token, now);
+            var c = s.Check(id); c.Release(identity.ActorId, token, now, mayReleaseOtherOwner);
             s.Checks.Save(c); return new Outcome<CheckView>(CheckView.From(c));
         }, cancellationToken);
     }

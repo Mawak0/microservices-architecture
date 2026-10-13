@@ -777,6 +777,26 @@
         },
         "description": "Атомарно взять ожидающую апелляцию этой игры, включая автоматически возвращённую после истечения назначения. Новый token; пустая очередь — 204."
       }
+    },
+    "/appeals/{id}": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "schema": { "type": "string" }
+        }
+      ],
+      "get": {
+        "operationId": "getAppeal",
+        "summary": "Прочитать апелляцию с исходным снимком и вердиктом",
+        "description": "Доступ проверяющему, администратору и интеграционной идентичности. Истёкшее назначение возвращается в очередь без изменения вердикта или квоты.",
+        "x-roles": ["admin", "checker", "integration"],
+        "responses": {
+          "200": { "$ref": "#/components/responses/Appeal" },
+          "default": { "$ref": "#/components/responses/Error" }
+        }
+      }
     }
   },
   "components": {

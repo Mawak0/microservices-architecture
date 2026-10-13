@@ -62,9 +62,9 @@ public sealed class AnswerCheck
         if (duration <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(duration));
         Assignment = Assignment! with { ExpiresAt = now.Add(duration) };
     }
-    public void Release(string actorId, string token, DateTimeOffset now)
+    public void Release(string actorId, string token, DateTimeOffset now, bool mayReleaseOtherOwner = false)
     {
-        RequireOwner(actorId, token, now); Invalidate();
+        RequireOwner(actorId, token, now, mayReleaseOtherOwner); Invalidate();
         Stage = Stage == CheckStage.AppealChecking ? CheckStage.AppealPending : CheckStage.Pending;
     }
     public void Record(Verdict verdict, string actorId, string token, DateTimeOffset now)
@@ -109,7 +109,7 @@ public sealed class AnswerCheck
         if (Assignment is not null) previous.Add(new(Assignment.Token, false));
         Assignment = null;
     }
-    private void RequireOwner(string actor, string token, DateTimeOffset now)
+    private void RequireOwner(string actor, string token, DateTimeOffset now, bool mayReleaseOtherOwner = false)
     {
         Required.Text(token);
         if (Assignment?.Token != token)
@@ -119,6 +119,6 @@ public sealed class AnswerCheck
                 ? "ASSIGNMENT_EXPIRED" : "STALE_ASSIGNMENT");
         }
         if (now >= Assignment.ExpiresAt) throw new DomainFailure("ASSIGNMENT_EXPIRED");
-        if (Assignment.ActorId != actor) throw new DomainFailure("CHECK_NOT_ASSIGNED_TO_YOU");
+        if (!mayReleaseOtherOwner && Assignment.ActorId != actor) throw new DomainFailure("CHECK_NOT_ASSIGNED_TO_YOU");
     }
 }

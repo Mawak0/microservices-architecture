@@ -34,6 +34,8 @@ internal static class Transport
     }
     public static string Token(HttpContext context) =>
         Required.Text(context.Request.Headers["Assignment-Token"].FirstOrDefault());
+    public static bool MayReleaseOtherOwner(HttpContext context) =>
+        ((AuthenticatedActor)context.Items["actor"]!).Roles.Contains("admin");
     public static IResult Reply<T>(Outcome<T> result) => result.Value is null
         ? Results.NoContent() : Results.Json(result.Value, statusCode: result.Created ? 201 : 200);
     public static string GameQuery(HttpContext context) => Required.Text(context.Request.Query["gameId"].FirstOrDefault());

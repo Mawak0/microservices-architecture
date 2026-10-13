@@ -7,7 +7,13 @@ internal sealed class BackgroundCompletion(CompletionRefresh refresh, ILogger<Ba
     {
         while (!stoppingToken.IsCancellationRequested)
         {
-            try { await refresh.Execute(stoppingToken); }
+            try
+            {
+                var result = await refresh.Execute(stoppingToken);
+                foreach (var failure in result.Failures)
+                    logger.LogWarning("Completion refresh skipped game {GameId}: {Code} ({Kind})",
+                        failure.GameId, failure.Code, failure.Kind);
+            }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { return; }
             catch (Exception error) { logger.LogWarning(error, "Completion refresh will be retried"); }
             try { await Task.Delay(1000, stoppingToken); }

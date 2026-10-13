@@ -58,7 +58,7 @@ public sealed class AppealAssignments(ITransactions transactions, IClock clock, 
         }, cancellationToken);
     }
     public async Task<Outcome<AppealView>> Release(CommandIdentity identity, string id, string token,
-        CancellationToken cancellationToken)
+        bool mayReleaseOtherOwner, CancellationToken cancellationToken)
     {
         var replay = await transactions.Replay<AppealView>(identity, cancellationToken);
         if (replay is not null) return replay;
@@ -67,7 +67,7 @@ public sealed class AppealAssignments(ITransactions transactions, IClock clock, 
         {
             var appeal = s.Appeal(id); var check = s.Check(appeal.CheckId);
             if (appeal.Resolved) throw new DomainFailure("APPEAL_ALREADY_RESOLVED");
-            check.Release(identity.ActorId, token, now);
+            check.Release(identity.ActorId, token, now, mayReleaseOtherOwner);
             s.Checks.Save(check); return new Outcome<AppealView>(AppealView.From(appeal, check));
         }, cancellationToken);
     }

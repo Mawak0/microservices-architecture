@@ -26,7 +26,8 @@ internal static class AppealEndpoints
             Transport.Reply(await handler.Renew(await Transport.Identity(c), id, Transport.Token(c), c.RequestAborted)))
             .WithMetadata(new Roles("checker"));
         app.MapPost("/appeals/{id}/release", async (string id, HttpContext c, AppealAssignments handler) =>
-            Transport.Reply(await handler.Release(await Transport.Identity(c), id, Transport.Token(c), c.RequestAborted)))
+            Transport.Reply(await handler.Release(await Transport.Identity(c), id, Transport.Token(c),
+                Transport.MayReleaseOtherOwner(c), c.RequestAborted)))
             .WithMetadata(new Roles("checker"));
         app.MapPost("/appeals/{id}/resolve", async (string id, HttpContext c, ResolveAppeal handler) =>
         {

@@ -31,7 +31,8 @@ internal static class CheckEndpoints
             Transport.Reply(await handler.Renew(await Transport.Identity(c), id, Transport.Token(c), c.RequestAborted)))
             .WithMetadata(new Roles("checker"));
         app.MapPost("/checks/{id}/release", async (string id, HttpContext c, CheckAssignments handler) =>
-            Transport.Reply(await handler.Release(await Transport.Identity(c), id, Transport.Token(c), c.RequestAborted)))
+            Transport.Reply(await handler.Release(await Transport.Identity(c), id, Transport.Token(c),
+                Transport.MayReleaseOtherOwner(c), c.RequestAborted)))
             .WithMetadata(new Roles("checker"));
         app.MapPost("/checks/{id}/verdict", async (string id, HttpContext c, RecordVerdict handler) =>
         {
