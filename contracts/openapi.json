@@ -9,7 +9,7 @@
   "info": {
     "title": "Sapientum Review and Appeals Service",
     "version": "0.3.0",
-    "description": "Предлагаемый API без реализации; бизнес-правила и ошибки — SERVICE.md."
+    "description": "HTTP API сервиса проверки и апелляций; реализация — src/Sapientum.Review.*, бизнес-правила и ошибки — SERVICE.md."
   },
   "security": [
     {

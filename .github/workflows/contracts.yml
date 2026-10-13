@@ -11,8 +11,12 @@ jobs:
         with:
           node-version: '22'
           cache: npm
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
       - run: npm ci
       - run: npm test
       - run: node --check tests/acceptance.test.mjs
       - run: npm exec --yes --package=@redocly/cli@2.62.1 -- redocly lint contracts/openapi.json --extends minimal
-      # Acceptance requires a real service. Never replace it with the fixture server.
+      - run: dotnet test Sapientum.Review.sln --configuration Release
+      - run: npm run test:service

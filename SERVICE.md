@@ -101,5 +101,7 @@ APPEAL_DEADLINE_PASSED, APPEAL_ALREADY_USED, APPEAL_QUOTA_EXHAUSTED,
 APPEAL_ALREADY_RESOLVED, CORRECTION_REQUIRED, VERDICT_UNCHANGED,
 IDEMPOTENCY_KEY_REUSED, VALIDATION_ERROR, ASSIGNMENT_EXPIRED, STALE_ASSIGNMENT.
 
-Реализация отсутствует. Crash/restart-испытания и производственные значения TTL
-нужно проверить при реализации; бизнес-правила восстановления определены выше.
+Реализация находится в src/Sapientum.Review.*. Доменные, архитектурные,
+реляционные и восстановительные испытания находятся в tests/Sapientum.Review.Tests;
+46 исходных сценариев запускаются против реального сервиса через npm run test:service.
+Значение TTL настраивается Runtime__LeaseSeconds. Схема зависимостей — ARCHITECTURE.md.

@@ -1,0 +1,1 @@
+<Project Sdk="Microsoft.NET.Sdk.Web"><ItemGroup><ProjectReference Include="../Sapientum.Review.Application/Sapientum.Review.Application.csproj" /><ProjectReference Include="../Sapientum.Review.Infrastructure/Sapientum.Review.Infrastructure.csproj" /></ItemGroup></Project>

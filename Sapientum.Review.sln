@@ -1,0 +1,57 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{8E1970F8-D283-4EA6-A825-51EBA9253D36}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sapientum.Review.Domain", "src\Sapientum.Review.Domain\Sapientum.Review.Domain.csproj", "{A989E9D2-EAB4-428E-9AC8-4B60E3B2D608}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sapientum.Review.Application", "src\Sapientum.Review.Application\Sapientum.Review.Application.csproj", "{E57D11C1-0093-4419-8F72-6CC5A3CACD3F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sapientum.Review.Infrastructure", "src\Sapientum.Review.Infrastructure\Sapientum.Review.Infrastructure.csproj", "{91E8BF7C-E45A-4B72-B2C6-E833E4DF3D09}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sapientum.Review.Api", "src\Sapientum.Review.Api\Sapientum.Review.Api.csproj", "{1E179E26-C26C-4EBB-B851-C9F5ED363A6E}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{B7761CCA-4039-4EB2-83C0-63D346220DE3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sapientum.Review.Tests", "tests\Sapientum.Review.Tests\Sapientum.Review.Tests.csproj", "{5999698B-7F16-4A64-81FF-127372E5BEAF}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A989E9D2-EAB4-428E-9AC8-4B60E3B2D608}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A989E9D2-EAB4-428E-9AC8-4B60E3B2D608}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A989E9D2-EAB4-428E-9AC8-4B60E3B2D608}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A989E9D2-EAB4-428E-9AC8-4B60E3B2D608}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E57D11C1-0093-4419-8F72-6CC5A3CACD3F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E57D11C1-0093-4419-8F72-6CC5A3CACD3F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E57D11C1-0093-4419-8F72-6CC5A3CACD3F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E57D11C1-0093-4419-8F72-6CC5A3CACD3F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{91E8BF7C-E45A-4B72-B2C6-E833E4DF3D09}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{91E8BF7C-E45A-4B72-B2C6-E833E4DF3D09}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{91E8BF7C-E45A-4B72-B2C6-E833E4DF3D09}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{91E8BF7C-E45A-4B72-B2C6-E833E4DF3D09}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1E179E26-C26C-4EBB-B851-C9F5ED363A6E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1E179E26-C26C-4EBB-B851-C9F5ED363A6E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1E179E26-C26C-4EBB-B851-C9F5ED363A6E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1E179E26-C26C-4EBB-B851-C9F5ED363A6E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5999698B-7F16-4A64-81FF-127372E5BEAF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5999698B-7F16-4A64-81FF-127372E5BEAF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5999698B-7F16-4A64-81FF-127372E5BEAF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5999698B-7F16-4A64-81FF-127372E5BEAF}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{A989E9D2-EAB4-428E-9AC8-4B60E3B2D608} = {8E1970F8-D283-4EA6-A825-51EBA9253D36}
+		{E57D11C1-0093-4419-8F72-6CC5A3CACD3F} = {8E1970F8-D283-4EA6-A825-51EBA9253D36}
+		{91E8BF7C-E45A-4B72-B2C6-E833E4DF3D09} = {8E1970F8-D283-4EA6-A825-51EBA9253D36}
+		{1E179E26-C26C-4EBB-B851-C9F5ED363A6E} = {8E1970F8-D283-4EA6-A825-51EBA9253D36}
+		{5999698B-7F16-4A64-81FF-127372E5BEAF} = {B7761CCA-4039-4EB2-83C0-63D346220DE3}
+	EndGlobalSection
+EndGlobal
