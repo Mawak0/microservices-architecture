@@ -18,12 +18,19 @@ test('Сценарий сохраняет привязку задачи и по�
   assert.equal(s.game.capabilities.appealsAllowed, true); assert.equal(s.game.appealLimit, undefined);
   const template = await call('GET', '/material-templates/custom%2Flayout-2');
   assert.equal(template.data.key, 'custom/layout-2');
+  assert.ok(template.data.answerSheet.some(b => b.field === 'modifierLabel'));
   await call('PATCH', `/__test/scenarios/${s.game.id}`, { lateSubmissionAllowed: true });
   const changed = (await call('GET', `/games/${s.game.id}`)).data;
   assert.equal(changed.id, s.game.id); assert.equal(changed.admissionVersion, s.game.admissionVersion + 1);
   assert.equal(changed.lateSubmissionAllowed, true); assert.ok(Date.parse(changed.submissionDeadline) < Date.now());
   assert.equal(changed.cycleId, undefined);
   assert.equal((await call('POST', '/blank-verifications', { qrToken: s.qrTokens[2] })).data.taskId, b.taskId);
+  const late = { admissionVersion: changed.admissionVersion, acceptedAt: new Date().toISOString() };
+  assert.equal((await call('PATCH', `/__test/receipts/${s.receipts[2].id}`, late)).status, 200);
+  const receipt = (await call('GET', `/receipts/${s.receipts[2].id}`)).data;
+  assert.equal(receipt.admissionVersion, late.admissionVersion); assert.equal(receipt.acceptedAt, late.acceptedAt);
+  assert.equal(receipt.taskId, b.taskId);
+  assert.equal((await call('PATCH', `/__test/receipts/${receipt.id}`, { ...late, taskId: 'other' })).status, 422);
 });
 
 test('PNG тестовых запросов имеет корректные CRC и сжатый поток', () => {

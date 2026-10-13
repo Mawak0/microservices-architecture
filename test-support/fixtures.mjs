@@ -78,6 +78,14 @@ export function createFixtureServer() {
         const s = scenarios.get(path.split('/').at(-1));
         if (!s) return error(res, 404, 'NOT_FOUND'); update(s, body); return reply(res, 200, s);
       }
+      if (req.method === 'PATCH' && path.startsWith('/__test/receipts/')) {
+        const receipt = receipts.get(path.split('/').at(-1));
+        if (!receipt) return error(res, 404, 'NOT_FOUND');
+        if (Object.keys(body).some(k => !['admissionVersion', 'acceptedAt'].includes(k)) ||
+            !Number.isInteger(body.admissionVersion) || body.admissionVersion < 1 ||
+            !Number.isFinite(Date.parse(body.acceptedAt))) return error(res, 422, 'INVALID_RECEIPT_FIXTURE');
+        Object.assign(receipt, body); return reply(res, 200, receipt);
+      }
       if (req.method === 'PUT' && path === '/__test/event-sink') {
         sinkAvailable = body.available; return reply(res, 200, { available: sinkAvailable });
       }
@@ -113,7 +121,8 @@ export function createFixtureServer() {
         if (![...scenarios.values()].some(s => s.game.materialSettings.templateKey === templateKey))
           return error(res, 404, 'TEMPLATE_NOT_FOUND');
         return reply(res, 200, { key: templateKey, format: 'declarative-v1',
-          answerSheet: [{ kind: 'field', field: 'heading' }, { kind: 'field', field: 'taskNumber' }, { kind: 'qr' }, { kind: 'answer-area' }],
+          answerSheet: [{ kind: 'field', field: 'heading' }, { kind: 'field', field: 'taskNumber' },
+            { kind: 'field', field: 'blankNumber' }, { kind: 'field', field: 'modifierLabel' }, { kind: 'qr' }, { kind: 'answer-area' }],
           taskSheet: [{ kind: 'field', field: 'taskNumber' }, { kind: 'field', field: 'statement' }]
         });
       }
