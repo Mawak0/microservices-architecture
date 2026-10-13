@@ -1,14 +1,109 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Materials events",
-  "allOf": [{ "$ref": "./common.json#/$defs/Event" }],
+  "allOf": [
+    {
+      "$ref": "./common.json#/$defs/Event"
+    }
+  ],
   "properties": {
-    "type": { "enum": ["KitPrepared", "BlanksIssued", "PrintPdfPrepared"] },
-    "data": { "type": "object", "required": ["gameId", "teamId"], "properties": { "gameId": { "type": "string" }, "teamId": { "type": ["string", "null"] } } }
+    "type": {
+      "enum": [
+        "KitPrepared",
+        "BlanksIssued",
+        "PrintPdfPrepared"
+      ]
+    },
+    "data": {
+      "type": "object",
+      "required": [
+        "gameId",
+        "teamId"
+      ],
+      "properties": {
+        "gameId": {
+          "type": "string"
+        },
+        "teamId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    }
   },
   "oneOf": [
-    { "properties": { "type": { "const": "KitPrepared" }, "data": { "required": ["kitId"], "properties": { "teamId": { "type": "string" }, "kitId": { "type": "string" } } } } },
-    { "properties": { "type": { "const": "BlanksIssued" }, "data": { "required": ["blankIds"], "properties": { "teamId": { "type": "string" }, "blankIds": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string" } } } } } },
-    { "properties": { "type": { "const": "PrintPdfPrepared" }, "data": { "required": ["printJobId", "artifactUrl"], "properties": { "printJobId": { "type": "string" }, "artifactUrl": { "type": "string" } } } } }
+    {
+      "properties": {
+        "type": {
+          "const": "KitPrepared"
+        },
+        "data": {
+          "required": [
+            "kitId"
+          ],
+          "properties": {
+            "teamId": {
+              "type": "string"
+            },
+            "kitId": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "properties": {
+        "type": {
+          "const": "BlanksIssued"
+        },
+        "data": {
+          "required": [
+            "blankIds"
+          ],
+          "properties": {
+            "teamId": {
+              "type": "string"
+            },
+            "blankIds": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "properties": {
+        "type": {
+          "const": "PrintPdfPrepared"
+        },
+        "data": {
+          "required": [
+            "printJobId",
+            "artifactUrl",
+            "templateKey"
+          ],
+          "properties": {
+            "printJobId": {
+              "type": "string"
+            },
+            "artifactUrl": {
+              "type": "string"
+            },
+            "templateKey": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    }
   ]
 }

@@ -1,9 +1,9 @@
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
-import { api, scenario, requireService, expectStatus, expectError, key, eventually, events } from '../test-support/client.mjs';
+import { api, fixture, scenario, requireService, expectStatus, expectError, key, eventually, events } from '../test-support/client.mjs';
 
 const issue = (s, count = 2, extra = {}, options = {}) => api('POST', '/blanks', {
-  body: { gameId: s.game.id, teamId: s.teamId, count, ...extra }, ...options
+  body: { gameId: s.game.id, teamId: s.teamId, taskId: s.taskIds[0], count, ...extra }, ...options
 });
 const prepare = s => api('POST', '/kits', { body: { gameId: s.game.id, teamId: s.teamId } });
 async function readyJob(id) {
@@ -35,9 +35,11 @@ describe('ТЗ: бланки и печатные материалы', { concurre
       assert.equal(blank.gameId, s.game.id); assert.equal(blank.teamId, s.teamId);
       const verified = expectStatus(await api('POST', '/blank-verifications', { body: { qrToken: blank.qrToken }, role: 'system' }), 200);
       assert.equal(verified.id, blank.id); assert.equal(verified.number, blank.number);
+      assert.equal(blank.taskId, s.taskIds[0]); assert.equal(blank.taskNumber, '1');
+      assert.equal(verified.taskId, blank.taskId); assert.equal(verified.taskNumber, blank.taskNumber);
     }
   });
-  it('M04 бонусы поддерживают оба модификатора без номера задачи', async () => {
+  it('M04 бонусные бланки заранее связаны с задачей и сохраняют модификаторы', async () => {
     const s = await scenario();
     for (const modifier of [{ kind: 'add', value: 3 }, { kind: 'multiply', value: 2 }]) {
       const b = expectStatus(await issue(s, 1, { modifier }), 201).blanks[0];
@@ -143,4 +145,49 @@ describe('ТЗ: бланки и печатные материалы', { concurre
     const s = await scenario(), other = await scenario(); await prepare(s);
     expectError(await api('POST', '/print-jobs', { body: { gameId: s.game.id, teamId: s.teamId, blankIds: [], taskIds: other.taskIds } }), 422, 'MATERIAL_SCOPE_MISMATCH');
   });
+  it('M20 при выпуске обязательна задача, назначенная этой игре', async () => {
+    const s = await scenario(), other = await scenario();
+    expectError(await api('POST', '/blanks', { body: { gameId: s.game.id, teamId: s.teamId, count: 1 } }), 422, 'VALIDATION_ERROR');
+    expectError(await issue(s, 1, { taskId: other.taskIds[0] }), 422, 'TASK_NOT_IN_GAME');
+    const b = expectStatus(await issue(s, 1, { taskId: s.taskIds[1] }), 201).blanks[0];
+    assert.equal(b.taskId, s.taskIds[1]); assert.equal(b.taskNumber, '2');
+    const verified = expectStatus(await api('POST', '/blank-verifications', { body: { qrToken: b.qrToken } }), 200);
+    assert.equal(verified.taskId, b.taskId); assert.equal(verified.taskNumber, '2');
+  });
+  it('M21 новый тип игры использует шаблон и возможности из настроек', async () => {
+    const modifier = { kind: 'add', value: 3 };
+    for (const modifiersAllowed of [true, false]) {
+      const s = await scenario({ system: 'new-olympiad-v4', modifiersAllowed,
+        templateKey: 'custom/answer-sheet-v2', templateHeading: 'Новая игра' });
+      const kit = expectStatus(await prepare(s), 201);
+      assert.equal(kit.templateKey, 'custom/answer-sheet-v2');
+      if (!modifiersAllowed) expectError(await issue(s, 1, { modifier }), 422, 'MODIFIER_NOT_ALLOWED');
+      const b = expectStatus(await issue(s, 1, modifiersAllowed ? { modifier } : {}), 201).blanks[0];
+      const job = expectStatus(await api('POST', '/print-jobs', { body: { gameId: s.game.id,
+        teamId: s.teamId, blankIds: [b.id], taskIds: s.taskIds } }), 202);
+      const done = await readyJob(job.id);
+      assert.equal(done.templateKey, 'custom/answer-sheet-v2');
+      assert.equal(done.templateParameters.heading, 'Новая игра');
+    }
+  });
+  it('M22 разные шаблоны одной системы не меняют уже созданное задание печати', async () => {
+    const s = await scenario({ templateKey: 'bonuses/layout-a' }); await prepare(s);
+    const b = expectStatus(await issue(s, 1), 201).blanks[0];
+    const body = { gameId: s.game.id, teamId: s.teamId, blankIds: [b.id], taskIds: [] };
+    const first = expectStatus(await api('POST', '/print-jobs', { body }), 202);
+    const doneFirst = await readyJob(first.id);
+    await fixture('PATCH', `/__test/scenarios/${s.game.id}`, { templateKey: 'bonuses/layout-b', templateHeading: 'Другой макет' });
+    const second = expectStatus(await api('POST', '/print-jobs', { body }), 202);
+    assert.equal((await readyJob(second.id)).templateKey, 'bonuses/layout-b');
+    assert.equal(expectStatus(await api('GET', `/print-jobs/${first.id}`), 200).templateKey, doneFirst.templateKey);
+    assert.equal(doneFirst.templateKey, 'bonuses/layout-a');
+  });
+  it('M23 публичная модель бланка не содержит эталонного ответа', async () => {
+    const s = await scenario(), b = expectStatus(await issue(s, 1), 201).blanks[0];
+    const fetched = expectStatus(await api('GET', `/blanks/${b.id}`, { role: 'observer' }), 200);
+    const verified = expectStatus(await api('POST', '/blank-verifications', { body: { qrToken: b.qrToken }, role: 'observer' }), 200);
+    assert.equal(b.referenceAnswer, undefined); assert.equal(fetched.referenceAnswer, undefined);
+    assert.equal(verified.referenceAnswer, undefined);
+  });
+
 });
