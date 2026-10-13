@@ -4,6 +4,8 @@ import { once } from 'node:events';
 import { createFixtureServer } from '../test-support/fixtures.mjs';
 import { request, pngBase64 } from '../test-support/client.mjs';
 import { inflateSync } from 'node:zlib';
+import { PNG } from 'pngjs';
+import jsQR from 'jsqr';
 
 test('Сценарий сохраняет привязку задачи и поддерживает поздний приём без нового цикла', async t => {
   const server = createFixtureServer(); server.listen(0, '127.0.0.1'); await once(server, 'listening');
@@ -22,6 +24,8 @@ test('Сценарий сохраняет привязку задачи и по�
   await call('PATCH', `/__test/scenarios/${s.game.id}`, { lateSubmissionAllowed: true });
   const changed = (await call('GET', `/games/${s.game.id}`)).data;
   assert.equal(changed.id, s.game.id); assert.equal(changed.admissionVersion, s.game.admissionVersion + 1);
+  assert.equal(changed.appealDeadline, s.game.appealDeadline);
+  assert.equal(changed.submissionDeadline, s.game.submissionDeadline);
   assert.equal(changed.lateSubmissionAllowed, true); assert.ok(Date.parse(changed.submissionDeadline) < Date.now());
   assert.equal(changed.cycleId, undefined);
   assert.equal((await call('POST', '/blank-verifications', { qrToken: s.qrTokens[2] })).data.taskId, b.taskId);
@@ -73,4 +77,35 @@ test('Заглушки изолируют сценарии, проверяют Q
   assert.equal((await call('POST', '/events', event)).status, 202);
   assert.equal((await call('GET', `/__test/events?gameId=${a.game.id}`)).data.length, 1);
   assert.equal((await call('GET', `/__test/events?gameId=${b.game.id}`)).data.length, 0);
+});
+
+test('Снимки содержат реальные QR, пустая PNG не декодируется', async t => {
+  const server = createFixtureServer(); server.listen(0, '127.0.0.1'); await once(server, 'listening');
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const s = (await request(base, 'POST', '/__test/scenarios', { body: {} })).data;
+  const decode = base64 => {
+    const png = PNG.sync.read(Buffer.from(base64, 'base64'));
+    return jsQR(new Uint8ClampedArray(png.data), png.width, png.height)?.data;
+  };
+  for (let i = 0; i < s.qrTokens.length; i++) assert.equal(decode(s.blankImages[i]), s.qrTokens[i]);
+  assert.equal(decode(s.invalidQrImage), s.invalidQrToken);
+  assert.equal(decode(pngBase64), undefined);
+});
+
+test('Часы управляемы; альтернативная задача не заменяет исходную', async t => {
+  const server = createFixtureServer(); server.listen(0, '127.0.0.1'); await once(server, 'listening');
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const call = (method, path, body) => request(base, method, path, { body });
+  const before = Date.parse((await call('GET', '/clock')).data.now);
+  const after = Date.parse((await call('POST', '/__test/clock/advance', { milliseconds: 60000 })).data.now);
+  assert.ok(after >= before + 60000);
+  assert.equal((await call('POST', '/__test/clock/advance', { milliseconds: -1 })).status, 422);
+  const s = (await call('POST', '/__test/scenarios', {})).data;
+  const original = (await call('GET', `/tasks/${s.taskIds[0]}`)).data;
+  const alternative = (await call('POST', '/__test/alternative-tasks', { taskId: original.id, referenceAnswer: '5' })).data;
+  assert.notEqual(alternative.id, original.id);
+  assert.deepEqual((await call('GET', `/tasks/${original.id}`)).data, original);
+  assert.deepEqual((await call('GET', `/games/${s.game.id}`)).data.taskIds, s.taskIds);
 });
