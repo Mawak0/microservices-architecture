@@ -11,8 +11,9 @@ export function requireService() {
   const url = new URL(process.env.SERVICE_BASE_URL);
   assert.ok(['http:', 'https:'].includes(url.protocol)); return url.href.replace(/\/$/, '');
 }
-export async function request(base, method, path, { body, role = 'admin', idempotencyKey = key() } = {}) {
+export async function request(base, method, path, { body, role = 'admin', idempotencyKey = key(), assignmentToken } = {}) {
   const headers = {};
+  if (assignmentToken !== undefined) headers['assignment-token'] = assignmentToken;
   if (role !== null) headers.authorization = `Bearer ${token(role)}`;
   if (body !== undefined) headers['content-type'] = 'application/json';
   if (['POST', 'PUT'].includes(method)) headers['idempotency-key'] = idempotencyKey;
@@ -28,6 +29,8 @@ export async function api(method, path, options) {
   return response;
 }
 export const fixture = (method, path, body) => request(fixtureBase, method, path, { body, role: null });
+export const clockNow = async () => expectStatus(await fixture('GET', '/clock'), 200).now;
+export const advanceClock = async milliseconds => expectStatus(await fixture('POST', '/__test/clock/advance', { milliseconds }), 200);
 export async function scenario(options = {}) {
   const r = await fixture('POST', '/__test/scenarios', options); assert.equal(r.status, 201); return r.data;
 }
