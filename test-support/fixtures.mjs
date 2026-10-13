@@ -1,6 +1,7 @@
 import http from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
+import QRCode from 'qrcode';
 
 const roles = {
   'test-admin': ['admin'], 'test-observer': ['observer'],
@@ -12,7 +13,8 @@ const roles = {
 export function createFixtureServer() {
   const scenarios = new Map(), teams = new Map(), tasks = new Map();
   const blanks = new Map(), receipts = new Map(), images = new Map(), events = new Map();
-  let sinkAvailable = true;
+  let sinkAvailable = true, clockOffsetMs = 0;
+  const nowMs = () => Date.now() + clockOffsetMs;
   const builtinProfiles = {
     bonuses: { appealsAllowed: true, modifiersAllowed: true, taskCardsShared: false },
     domino: { appealsAllowed: false, modifiersAllowed: false, taskCardsShared: true },
@@ -26,22 +28,23 @@ export function createFixtureServer() {
     const changed = ['submissionOpen', 'lateSubmissionAllowed'].some(k => k in changes && changes[k] !== s.options[k]);
     if (changed) s.game.admissionVersion++;
     Object.assign(s.options, changes);
-    const o = s.options, now = Date.now(), deadline = open => new Date(now + (open ? 3600000 : -3600000)).toISOString();
+    const o = s.options, now = nowMs(), deadline = open => new Date(now + (open ? 3600000 : -3600000)).toISOString();
     Object.assign(s.game, {
       system: o.system, status: o.submissionOpen ? 'running' : 'submission-closed',
-      submissionDeadline: deadline(o.submissionOpen), appealDeadline: deadline(o.appealOpen),
-      finishDeadline: deadline(!o.finishExpired), lateSubmissionAllowed: o.lateSubmissionAllowed,
+      submissionDeadline: !s.game.submissionDeadline || 'submissionOpen' in changes ? deadline(o.submissionOpen) : s.game.submissionDeadline,
+      appealDeadline: !s.game.appealDeadline || 'appealOpen' in changes ? deadline(o.appealOpen) : s.game.appealDeadline,
+      finishDeadline: !s.game.finishDeadline || 'finishExpired' in changes ? deadline(!o.finishExpired) : s.game.finishDeadline, lateSubmissionAllowed: o.lateSubmissionAllowed,
       capabilities: { appealsAllowed: o.appealsAllowed, modifiersAllowed: o.modifiersAllowed },
       materialSettings: { answerBlankCount: o.answerBlankCount, taskCardCount: o.taskCardCount, taskCardsShared: o.taskCardsShared,
         templateKey: o.templateKey, templateParameters: { heading: o.templateHeading } }
     });
     for (const id of [s.teamId, s.otherTeamId]) teams.get(id).admitted = o.admitted;
   }
-  function scenario(options) {
+  async function scenario(options) {
     const gameId = randomUUID(), teamId = randomUUID(), otherTeamId = randomUUID();
     const taskIds = Array.from({ length: 3 }, () => randomUUID());
     const game = { id: gameId, tournamentId: randomUUID(), admissionVersion: 1, taskIds, taskAssignments: taskIds.map((taskId, i) => ({ taskId, taskNumber: String(i + 1) })) };
-    const s = { game, teamId, otherTeamId, taskIds, blankIds: [], qrTokens: [], receipts: [], options: {
+    const s = { game, teamId, otherTeamId, taskIds, blankIds: [], qrTokens: [], blankImages: [], receipts: [], options: {
       system: 'bonuses', submissionOpen: true, appealOpen: true, finishExpired: false,
       quota: 2, admitted: true, storageAvailable: true, answerBlankCount: 3, taskCardCount: 3,
       lateSubmissionAllowed: false, appealsAllowed: false, modifiersAllowed: false, taskCardsShared: false,
@@ -59,10 +62,13 @@ export function createFixtureServer() {
         taskId: taskIds[taskIndex], taskNumber: String(taskIndex + 1), qrToken,
         modifier: s.options.modifiersAllowed ? { kind: 'add', value: 3 } : null };
       blanks.set(qrToken, b); s.blankIds.push(id); s.qrTokens.push(qrToken);
+      s.blankImages.push((await QRCode.toDataURL(qrToken, { errorCorrectionLevel: 'M', margin: 4, scale: 6 })).split(',')[1]);
       const receipt = { id: randomUUID(), blankId: id, gameId, admissionVersion: game.admissionVersion, teamId: b.teamId, taskId: b.taskId, taskNumber: b.taskNumber,
-        imageRef: `fixture://images/${id}`, acceptedAt: new Date(Date.now() - 7200000).toISOString() };
+        imageRef: `fixture://images/${id}`, acceptedAt: new Date(nowMs() - 7200000).toISOString() };
       receipts.set(receipt.id, receipt); s.receipts.push(receipt);
     }
+    s.invalidQrToken = `unregistered:${randomUUID()}`;
+    s.invalidQrImage = (await QRCode.toDataURL(s.invalidQrToken, { margin: 4, scale: 6 })).split(',')[1];
     scenarios.set(gameId, s); return s;
   }
   return http.createServer(async (req, res) => {
@@ -70,10 +76,23 @@ export function createFixtureServer() {
       const url = new URL(req.url, 'http://fixture'), path = url.pathname;
       let raw = ''; for await (const chunk of req) raw += chunk;
       const body = raw ? JSON.parse(raw) : {};
+      if (req.method === 'GET' && path === '/clock') return reply(res, 200, { now: new Date(nowMs()).toISOString() });
+      if (req.method === 'POST' && path === '/__test/clock/advance') {
+        if (!Number.isSafeInteger(body.milliseconds) || body.milliseconds <= 0)
+          return error(res, 422, 'INVALID_CLOCK_ADVANCE');
+        clockOffsetMs += body.milliseconds;
+        return reply(res, 200, { now: new Date(nowMs()).toISOString() });
+      }
+      if (req.method === 'POST' && path === '/__test/alternative-tasks') {
+        const original = tasks.get(body.taskId);
+        if (!original || typeof body.referenceAnswer !== 'string') return error(res, 422, 'INVALID_TASK_FIXTURE');
+        const alternative = { ...original, id: randomUUID(), referenceAnswer: body.referenceAnswer };
+        tasks.set(alternative.id, alternative); return reply(res, 201, alternative);
+      }
       if (req.method === 'GET' && path === '/health') return reply(res, 200, { fixture: true });
       if (req.method === 'POST' && path === '/auth/introspect') return reply(res, 200,
         { active: Boolean(roles[body.token]), userId: body.token, roles: roles[body.token] || [] });
-      if (req.method === 'POST' && path === '/__test/scenarios') return reply(res, 201, scenario(body));
+      if (req.method === 'POST' && path === '/__test/scenarios') return reply(res, 201, await scenario(body));
       if (req.method === 'PATCH' && path.startsWith('/__test/scenarios/')) {
         const s = scenarios.get(path.split('/').at(-1));
         if (!s) return error(res, 404, 'NOT_FOUND'); update(s, body); return reply(res, 200, s);
