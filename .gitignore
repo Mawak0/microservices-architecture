@@ -5,3 +5,10 @@ node_modules/
 coverage/
 test-results/
 *.log
+**/bin/
+**/obj/
+.data/
+artifacts/
+*.db
+*.db-shm
+*.db-wal

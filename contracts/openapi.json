@@ -9,7 +9,7 @@
   "info": {
     "title": "Sapientum Materials Service",
     "version": "0.3.0",
-    "description": "Предлагаемый контракт. Реализация отсутствует. Общие правила — CONTRACTS.md."
+    "description": "Контракт реализации сервиса материалов .NET 8. Общие правила — CONTRACTS.md; запуск и проверки — README.md."
   },
   "security": [
     {

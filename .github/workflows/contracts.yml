@@ -11,8 +11,19 @@ jobs:
         with:
           node-version: '22'
           cache: npm
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - run: sudo apt-get update && sudo apt-get install -y fonts-dejavu-core poppler-utils
       - run: npm ci
       - run: npm test
       - run: node --check tests/acceptance.test.mjs
       - run: npm exec --yes --package=@redocly/cli@2.62.1 -- redocly lint contracts/openapi.json --extends minimal
-      # Acceptance requires a real service. Never replace it with the fixture server.
+      - run: npm run test:service
+        env:
+          PDF_ARTIFACT_DIR: artifacts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: materials-rendered-pdf-proof
+          path: artifacts
