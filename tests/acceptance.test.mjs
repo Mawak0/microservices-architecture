@@ -190,4 +190,25 @@ describe('ТЗ: бланки и печатные материалы', { concurre
     assert.equal(verified.referenceAnswer, undefined);
   });
 
+  it('M24 новая задача с исправленным эталоном не меняет выданные бланки', async () => {
+    const s = await scenario(); await prepare(s);
+    const b = expectStatus(await issue(s, 1), 201).blanks[0];
+    const alternative = expectStatus(await fixture('POST', '/__test/alternative-tasks', {
+      taskId: b.taskId, referenceAnswer: 'новый эталон'
+    }), 201);
+    assert.notEqual(alternative.id, b.taskId);
+    expectError(await issue(s, 1, { taskId: alternative.id }), 422, 'TASK_NOT_IN_GAME');
+    expectError(await api('POST', '/print-jobs', { body: {
+      gameId: s.game.id, teamId: s.teamId, blankIds: [], taskIds: [alternative.id]
+    } }), 422, 'MATERIAL_SCOPE_MISMATCH');
+    const job = expectStatus(await api('POST', '/print-jobs', { role: 'observer', body: {
+      gameId: s.game.id, teamId: s.teamId, blankIds: [b.id], taskIds: [b.taskId]
+    } }), 202);
+    await readyJob(job.id);
+    const fetched = expectStatus(await api('GET', `/blanks/${b.id}`), 200);
+    const verified = expectStatus(await api('POST', '/blank-verifications', { body: { qrToken: b.qrToken } }), 200);
+    assert.equal(fetched.taskId, b.taskId); assert.equal(fetched.qrToken, b.qrToken);
+    assert.equal(verified.taskId, b.taskId); assert.equal(verified.taskNumber, b.taskNumber);
+  });
+
 });
