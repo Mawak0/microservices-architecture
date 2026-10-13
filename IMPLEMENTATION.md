@@ -49,6 +49,10 @@ Use Dependencies__BaseUrl as the optional default HTTP dependency URL for local
 contract tests. Allow overrides with Dependencies__IdentityBaseUrl,
 GamesBaseUrl, TeamsBaseUrl, TasksBaseUrl, MaterialsBaseUrl, ImagesBaseUrl,
 EventsBaseUrl and TemplatesBaseUrl as relevant. These keys are under Dependencies.
+Review additionally supports Dependencies__ReceiptsBaseUrl. Optional
+Dependencies__AccessToken authenticates outgoing requests; test launchers set
+their synthetic credential explicitly. Materials supports Templates__Directory
+for its owned file catalog and Pdf__FontPath for a Unicode TrueType font.
 Storage__ConnectionString selects SQLite; default persistent .data/service.db.
 Optional Dependencies__ClockBaseUrl is enabled only in ContractTests environment;
 otherwise use server system clock. Runtime__LeaseSeconds controls review TTL.
