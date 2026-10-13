@@ -1,12 +1,12 @@
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
-import { api, fixture, scenario, requireService, expectStatus, expectError, key, eventually, events, pngBase64 } from '../test-support/client.mjs';
+import { api, fixture, scenario, requireService, expectStatus, expectError, key, eventually, events, pngBase64, advanceClock } from '../test-support/client.mjs';
 
 const game = async s => expectStatus(await fixture('GET', `/games/${s.game.id}`), 200);
 const open = async s => api('PUT', `/intake-sessions/${s.game.id}`, { body: { admissionVersion: (await game(s)).admissionVersion } });
 async function setup(options) { const s = await scenario(options); expectStatus(await open(s), 200); return s; }
 const submit = (s, index = 0, changes = {}, options = {}) => api('POST', '/receipts', { role: 'observer', body: {
-  qrToken: s.qrTokens[index], imageBase64: pngBase64, imageMediaType: 'image/png', legibilityConfirmed: true, ...changes
+  qrToken: s.qrTokens[index], imageBase64: s.blankImages[index], imageMediaType: 'image/png', legibilityConfirmed: true, ...changes
 }, ...options });
 const close = async (s, changes = {}) => api('POST', `/intake-sessions/${s.game.id}/close`, {
   role: 'system', body: { admissionVersion: (await game(s)).admissionVersion, ...changes }
@@ -22,11 +22,11 @@ describe('ТЗ: приём бланков', { concurrency: false }, () => {
     assert.equal(r.taskId, s.receipts[0].taskId); assert.equal(r.taskNumber, s.receipts[0].taskNumber); assert.ok(r.imageRef); assert.ok(Number.isFinite(Date.parse(r.acceptedAt)));
     assert.deepEqual(expectStatus(await api('GET', `/receipts/${r.id}`), 200), r);
     const images = expectStatus(await fixture('GET', `/__test/images?gameId=${s.game.id}`), 200);
-    assert.ok(images.some(i => i.imageRef === r.imageRef && i.dataBase64 === pngBase64));
+    assert.ok(images.some(i => i.imageRef === r.imageRef && i.dataBase64 === s.blankImages[0]));
   });
   it('I02 неподлинный QR отклоняется без принятия ответа', async () => {
     const s = await setup();
-    expectError(await submit(s, 0, { qrToken: `${s.qrTokens[0]}tampered` }), 422, 'INVALID_QR');
+    expectError(await submit(s, 0, { qrToken: s.invalidQrToken, imageBase64: s.invalidQrImage }), 422, 'INVALID_QR');
     assert.equal((await events(s.game.id, 'ReceiptAccepted')).length, 0);
     expectStatus(await submit(s), 201);
   });
@@ -77,7 +77,7 @@ describe('ТЗ: приём бланков', { concurrency: false }, () => {
     assert.equal(e.data.imageRef, r.imageRef); assert.equal(e.data.blankId, r.blankId);
     assert.equal(e.data.admissionVersion, r.admissionVersion);
     assert.equal(e.data.taskId, r.taskId); assert.equal(e.data.taskNumber, r.taskNumber); assert.equal(e.data.teamId, r.teamId);
-    assert.ok(!JSON.stringify(e).includes(pngBase64), 'Событие не должно нести тяжёлое фото');
+    assert.ok(!JSON.stringify(e).includes(s.blankImages[0]), 'Событие не должно нести тяжёлое фото');
   });
   it('I11 закрытие фиксирует полный список и запрещает новые ответы', async () => {
     const s = await setup(); const accepted = [];
@@ -173,6 +173,42 @@ describe('ТЗ: приём бланков', { concurrency: false }, () => {
     const s = await setup({ submissionOpen: false, lateSubmissionAllowed: true });
     expectStatus(await submit(s), 201);
     expectError(await close(s), 409, 'LATE_ADMISSION_ACTIVE');
+  });
+
+  it('I27 сервер отклоняет снимок без читаемого QR несмотря на клиентский token', async () => {
+    const s = await setup();
+    expectError(await submit(s, 0, { imageBase64: pngBase64 }), 422, 'QR_UNREADABLE');
+    assert.equal((await events(s.game.id, 'ReceiptAccepted')).length, 0);
+    assert.equal(expectStatus(await fixture('GET', `/__test/images?gameId=${s.game.id}`), 200).length, 0);
+    assert.deepEqual(expectStatus(await api('GET', `/intake-sessions/${s.game.id}`), 200).receiptIds, []);
+    expectStatus(await submit(s), 201);
+  });
+  it('I28 QR на фотографии обязан совпасть с переданным клиентом', async () => {
+    const s = await setup();
+    expectError(await submit(s, 0, { imageBase64: s.blankImages[1] }), 422, 'QR_MISMATCH');
+    assert.equal((await events(s.game.id, 'ReceiptAccepted')).length, 0);
+    assert.equal(expectStatus(await fixture('GET', `/__test/images?gameId=${s.game.id}`), 200).length, 0);
+    expectStatus(await submit(s, 0), 201); expectStatus(await submit(s, 1), 201);
+  });
+  it('I29 поздняя сдача остаётся открытой до ручного отключения и не продлевает апелляции', async () => {
+    const s = await setup({ submissionOpen: false, appealOpen: false, lateSubmissionAllowed: true });
+    const before = await game(s);
+    await advanceClock(7200000);
+    expectStatus(await submit(s), 201);
+    expectError(await close(s), 409, 'LATE_ADMISSION_ACTIVE');
+    assert.equal((await game(s)).appealDeadline, before.appealDeadline);
+    await fixture('PATCH', `/__test/scenarios/${s.game.id}`, { lateSubmissionAllowed: false });
+    expectStatus(await close(s), 200);
+    assert.equal((await game(s)).appealDeadline, before.appealDeadline);
+    expectError(await submit(s, 1), 409, 'INTAKE_CLOSED');
+  });
+  it('I30 новая запись задачи не меняет принадлежность исходного бланка', async () => {
+    const s = await setup();
+    const alternative = expectStatus(await fixture('POST', '/__test/alternative-tasks', {
+      taskId: s.taskIds[0], referenceAnswer: 'новый эталон'
+    }), 201);
+    const receipt = expectStatus(await submit(s), 201);
+    assert.notEqual(receipt.taskId, alternative.id); assert.equal(receipt.taskId, s.taskIds[0]);
   });
 
 });

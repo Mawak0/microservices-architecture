@@ -8,7 +8,7 @@
   ],
   "info": {
     "title": "Sapientum Intake Service",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "description": "Контракт приёма. Реализация отсутствует. Ошибки и правила — SERVICE.md и CONTRACTS.md."
   },
   "security": [
@@ -35,7 +35,7 @@
           "admin",
           "integration"
         ],
-        "description": "Синхронизировать приём с актуальной admissionVersion игры. Поздний приём открывается при lateSubmissionAllowed=true без нового цикла и без сброса принятых бланков.",
+        "description": "Синхронизировать приём с актуальной admissionVersion игры. Поздний приём открывается при lateSubmissionAllowed=true без нового цикла и без сброса принятых бланков. lateSubmissionAllowed выключается вручную администратором у владельца игры; appealDeadline не меняется.",
         "parameters": [
           {
             "$ref": "#/components/parameters/IdempotencyKey"
@@ -151,7 +151,7 @@
           "admin",
           "observer"
         ],
-        "description": "Атомарный бизнес-эффект приёма одного бланка. 201 только после надёжного сохранения снимка и факта приёма.",
+        "description": "Сервер декодирует QR из полученного imageBase64, сравнивает с qrToken, проверяет подлинность в реестре и отсутствие дубликата. Нечитаемый/отсутствующий QR — 422 QR_UNREADABLE; несовпадение — 422 QR_MISMATCH; неподлинный — 422 INVALID_QR. До успешной проверки нет квитанции или ReceiptAccepted. 201 только после надёжного сохранения именно проверенного снимка и факта приёма.",
         "parameters": [
           {
             "$ref": "#/components/parameters/IdempotencyKey"
@@ -306,12 +306,14 @@
         "properties": {
           "qrToken": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "description": "Результат считывания интерфейсом из выбранного снимка; сервер обязан независимо повторить считывание и сверить точное значение."
           },
           "imageBase64": {
             "type": "string",
             "minLength": 1,
-            "contentEncoding": "base64"
+            "contentEncoding": "base64",
+            "description": "Байты выбранного снимка. Проверка QR выполняется сервером на этих байтах, а не по доверенному клиентскому флагу."
           },
           "imageMediaType": {
             "enum": [
