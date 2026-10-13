@@ -76,6 +76,7 @@ describe('ТЗ: проверка и апелляции', { concurrency: false },
     expectStatus(await claim(c.id), 200);
     expectError(await verdict(s, c.id, { taskId: other.taskIds[0] }), 422, 'VALIDATION_ERROR');
     expectError(await verdict(s, c.id, { transcription: '4' }), 422, 'VALIDATION_ERROR');
+    expectError(await verdict(s, c.id, { referenceAnswer: 'подмена' }), 422, 'VALIDATION_ERROR');
   });
   it('R07 вердикт уходит на оценивание, но не содержит начисленных баллов', async () => {
     const s = await setup(), c = await checked(s);
@@ -283,6 +284,9 @@ describe('ТЗ: проверка и апелляции', { concurrency: false },
     await fixture('PATCH', `/__test/scenarios/${s.game.id}`, { lateSubmissionAllowed: true });
     const e = receiptEvent(s, 2); e.data.admissionVersion = (await currentGame(s)).admissionVersion;
     e.data.acceptedAt = new Date().toISOString();
+    expectStatus(await fixture('PATCH', `/__test/receipts/${e.data.receiptId}`, {
+      admissionVersion: e.data.admissionVersion, acceptedAt: e.data.acceptedAt
+    }), 200);
     const second = expectStatus(await ingest(s, 2, { body: e }), 201);
     await fixture('PATCH', `/__test/scenarios/${s.game.id}`, { lateSubmissionAllowed: false });
     expectStatus(await manifest(s, [first.receiptId, second.receiptId]), 200);
