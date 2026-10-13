@@ -8,7 +8,7 @@
   ],
   "info": {
     "title": "Sapientum Review and Appeals Service",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "description": "Предлагаемый API без реализации; бизнес-правила и ошибки — SERVICE.md."
   },
   "security": [
@@ -198,7 +198,8 @@
           "default": {
             "$ref": "#/components/responses/Error"
           }
-        }
+        },
+        "description": " Назначение временное: при now >= lease.expiresAt без продления возвращается в очередь. Каждый новый claim выдаёт новый token."
       }
     },
     "/checks/{id}": {
@@ -248,7 +249,7 @@
           "admin",
           "checker"
         ],
-        "description": "Атомарно назначить свободное дело текущему проверяющему.",
+        "description": "Атомарно назначить свободное дело текущему проверяющему. Назначение временное: при now >= lease.expiresAt без продления возвращается в очередь. Каждый новый claim выдаёт новый token.",
         "parameters": [
           {
             "$ref": "#/components/parameters/IdempotencyKey"
@@ -282,10 +283,13 @@
           "admin",
           "checker"
         ],
-        "description": "Вернуть назначенное дело в очередь; только исполнитель или администратор.",
+        "description": "Вернуть назначенное дело в очередь; только исполнитель или администратор. Требуется действующее назначение и его Assignment-Token. Просроченное назначение — 409 ASSIGNMENT_EXPIRED, токен прежнего назначения — 409 STALE_ASSIGNMENT.",
         "parameters": [
           {
             "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/AssignmentToken"
           }
         ],
         "responses": {
@@ -319,6 +323,9 @@
         "parameters": [
           {
             "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/AssignmentToken"
           }
         ],
         "requestBody": {
@@ -338,7 +345,8 @@
           "default": {
             "$ref": "#/components/responses/Error"
           }
-        }
+        },
+        "description": " Требуется действующее назначение и его Assignment-Token. Просроченное назначение — 409 ASSIGNMENT_EXPIRED, токен прежнего назначения — 409 STALE_ASSIGNMENT."
       }
     },
     "/checks/{id}/corrections": {
@@ -522,7 +530,7 @@
           "admin",
           "checker"
         ],
-        "description": "Назначить апелляцию и вернуть исходный снимок/вердикт в поле check.",
+        "description": "Назначить апелляцию и вернуть исходный снимок/вердикт в поле check. Назначение временное: при now >= lease.expiresAt без продления возвращается в очередь. Каждый новый claim выдаёт новый token.",
         "parameters": [
           {
             "$ref": "#/components/parameters/IdempotencyKey"
@@ -559,6 +567,9 @@
         "parameters": [
           {
             "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/AssignmentToken"
           }
         ],
         "requestBody": {
@@ -578,7 +589,8 @@
           "default": {
             "$ref": "#/components/responses/Error"
           }
-        }
+        },
+        "description": " Требуется действующее назначение и его Assignment-Token. Просроченное назначение — 409 ASSIGNMENT_EXPIRED, токен прежнего назначения — 409 STALE_ASSIGNMENT."
       }
     },
     "/games/{gameId}/completion": {
@@ -608,6 +620,163 @@
           }
         }
       }
+    },
+    "/checks/{id}/renew": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "renewCheckAssignment",
+        "summary": "Продлить текущее назначение",
+        "x-roles": [
+          "admin",
+          "checker"
+        ],
+        "description": "Только текущий исполнитель с действующим Assignment-Token продлевает срок от серверного now. Просроченное назначение нельзя продлить. Изменения вердикта/истории/квоты нет.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/AssignmentToken"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Check"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/appeals/{id}/renew": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "renewAppealAssignment",
+        "summary": "Продлить текущее назначение",
+        "x-roles": [
+          "admin",
+          "checker"
+        ],
+        "description": "Только текущий исполнитель с действующим Assignment-Token продлевает срок от серверного now. Просроченное назначение нельзя продлить. Изменения вердикта/истории/квоты нет.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/AssignmentToken"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Appeal"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/appeals/{id}/release": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "releaseAppealAssignment",
+        "summary": "Вернуть апелляцию в очередь",
+        "x-roles": [
+          "admin",
+          "checker"
+        ],
+        "description": "Исполнитель или администратор с текущим Assignment-Token освобождает назначение; апелляция остаётся поданной, квота не возвращается.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/AssignmentToken"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Appeal"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/appeals/next": {
+      "post": {
+        "operationId": "claimNextAppeal",
+        "summary": "Взять следующую апелляцию",
+        "x-roles": [
+          "admin",
+          "checker"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "gameId"
+                ],
+                "properties": {
+                  "gameId": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Appeal"
+          },
+          "204": {
+            "description": "Нет доступных дел; это не подтверждение полноты проверок"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "description": "Атомарно взять ожидающую апелляцию этой игры, включая автоматически возвращённую после истечения назначения. Новый token; пустая очередь — 204."
+      }
     }
   },
   "components": {
@@ -626,6 +795,16 @@
           "type": "string",
           "minLength": 1
         }
+      },
+      "AssignmentToken": {
+        "in": "header",
+        "name": "Assignment-Token",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": "Token текущего назначения. Автоматически передаётся UI; не часть ответа участника."
       }
     },
     "responses": {
@@ -670,7 +849,7 @@
         }
       },
       "Completion": {
-        "description": "Полнота проверок текущего цикла",
+        "description": "Полнота проверок игры при актуальном режиме приёма",
         "content": {
           "application/json": {
             "schema": {
@@ -734,7 +913,8 @@
           "history",
           "taskId",
           "taskNumber",
-          "referenceAnswer"
+          "referenceAnswer",
+          "lease"
         ],
         "properties": {
           "id": {
@@ -831,7 +1011,10 @@
           },
           "referenceAnswer": {
             "type": "string",
-            "description": "Серверный эталон задачи, определённой по бланку; только авторизованным проверяющим/администратору."
+            "description": "Неизменяемый серверный эталон по точному taskId бланка; новая задача никогда не подменяет его."
+          },
+          "lease": {
+            "$ref": "#/components/schemas/AssignmentLease"
           }
         }
       },
@@ -993,6 +1176,28 @@
             "description": "Приём разрешён обычным сроком или lateSubmissionAllowed; при true complete всегда false."
           }
         }
+      },
+      "AssignmentLease": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "additionalProperties": false,
+        "required": [
+          "token",
+          "expiresAt"
+        ],
+        "properties": {
+          "token": {
+            "type": "string",
+            "minLength": 1
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "description": "Текущее временное назначение; null вне проверки. Новый claim выдаёт новый token; heartbeat продлевает expiresAt без смены token."
       }
     }
   }

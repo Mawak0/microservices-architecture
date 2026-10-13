@@ -1,14 +1,28 @@
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
-import { api, fixture, scenario, requireService, expectStatus, expectError, key, eventually, events } from '../test-support/client.mjs';
+import { api, fixture, scenario, requireService, expectStatus, expectError, key, eventually, events, clockNow, advanceClock } from '../test-support/client.mjs';
 
 function receiptEvent(s, index = 0) {
   const { id, ...data } = s.receipts[index];
   return { eventId: key(), type: 'ReceiptAccepted', occurredAt: new Date().toISOString(), aggregateId: id, data: { receiptId: id, ...data } };
 }
 const ingest = (s, index = 0, options = {}) => api('POST', '/integrations/receipts', { role: 'system', body: receiptEvent(s, index), ...options });
-const claim = (id, role = 'checker') => api('POST', `/checks/${id}/claim`, { role });
-const verdict = (s, id, extra = {}, options = {}) => api('POST', `/checks/${id}/verdict`, { role: 'checker', body: {
+const checkTokens = new Map(), appealTokens = new Map();
+async function claim(id, role = 'checker') {
+  const r = await api('POST', `/checks/${id}/claim`, { role });
+  if (r.status === 200) checkTokens.set(id, r.data.lease.token);
+  return r;
+}
+async function claimAppeal(id, role = 'checker') {
+  const r = await api('POST', `/appeals/${id}/claim`, { role });
+  if (r.status === 200) appealTokens.set(id, r.data.check.lease.token);
+  return r;
+}
+async function passExpiry(lease) {
+  const now = Date.parse(await clockNow());
+  await advanceClock(Math.max(1, Date.parse(lease.expiresAt) - now + 1));
+}
+const verdict = (s, id, extra = {}, options = {}) => api('POST', `/checks/${id}/verdict`, { role: 'checker', assignmentToken: checkTokens.get(id), body: {
   verdict: 'incorrect', ...extra
 }, ...options });
 async function checked(s, index = 0, extra = {}) {
@@ -24,9 +38,9 @@ const quota = async s => expectStatus(await api('GET', `/appeal-quotas/${s.game.
 const appeal = (id, options = {}) => api('POST', '/appeals', { role: 'observer', body: { checkId: id, reason: 'По просьбе участника: неверно прочитан ответ' }, ...options });
 async function claimedAppeal(id) {
   const a = expectStatus(await appeal(id), 201);
-  return expectStatus(await api('POST', `/appeals/${a.id}/claim`, { role: 'checker' }), 200);
+  return expectStatus(await claimAppeal(a.id), 200);
 }
-const resolve = (id, body = {}, options = {}) => api('POST', `/appeals/${id}/resolve`, { role: 'checker', body: {
+const resolve = (id, body = {}, options = {}) => api('POST', `/appeals/${id}/resolve`, { role: 'checker', assignmentToken: appealTokens.get(id), body: {
   outcome: 'jury-error-corrected', reason: 'Результат пересмотра жюри',
   ...(body.outcome === 'upheld' ? {} : { verdict: 'correct' }), ...body
 }, ...options });
@@ -148,7 +162,7 @@ describe('ТЗ: проверка и апелляции', { concurrency: false },
   });
   it('R18 одного признания без исправленных данных недостаточно для возврата', async () => {
     const s = await setup(), c = await checked(s), a = await claimedAppeal(c.id);
-    expectError(await api('POST', `/appeals/${a.id}/resolve`, { role: 'checker', body: { outcome: 'jury-error-corrected', reason: 'Признаём ошибку' } }), 422, 'CORRECTION_REQUIRED');
+    expectError(await api('POST', `/appeals/${a.id}/resolve`, { role: 'checker', assignmentToken: appealTokens.get(a.id), body: { outcome: 'jury-error-corrected', reason: 'Признаём ошибку' } }), 422, 'CORRECTION_REQUIRED');
     assert.equal((await quota(s)).used, 1);
   });
   it('R19 задержанная доставка и проверка ранее принятого ответа разрешены после срока', async () => {
@@ -223,7 +237,7 @@ describe('ТЗ: проверка и апелляции', { concurrency: false },
   });
   it('R29 освобождённое дело доступно другому проверяющему', async () => {
     const s = await setup(), c = expectStatus(await ingest(s), 201); expectStatus(await claim(c.id), 200);
-    expectStatus(await api('POST', `/checks/${c.id}/release`, { role: 'checker' }), 200);
+    expectStatus(await api('POST', `/checks/${c.id}/release`, { role: 'checker', assignmentToken: checkTokens.get(c.id) }), 200);
     assert.equal(expectStatus(await claim(c.id, 'checker-2'), 200).assignedTo, 'test-checker-2');
   });
   it('R30 события отражают ожидание апелляции и результат её рассмотрения', async () => {
@@ -283,7 +297,7 @@ describe('ТЗ: проверка и апелляции', { concurrency: false },
     await eventually(() => completion(s), r => r.complete);
     await fixture('PATCH', `/__test/scenarios/${s.game.id}`, { lateSubmissionAllowed: true });
     const e = receiptEvent(s, 2); e.data.admissionVersion = (await currentGame(s)).admissionVersion;
-    e.data.acceptedAt = new Date().toISOString();
+    e.data.acceptedAt = await clockNow();
     expectStatus(await fixture('PATCH', `/__test/receipts/${e.data.receiptId}`, {
       admissionVersion: e.data.admissionVersion, acceptedAt: e.data.acceptedAt
     }), 200);
@@ -300,6 +314,105 @@ describe('ТЗ: проверка и апелляции', { concurrency: false },
     const s = await setup(), c = await checked(s), a = await claimedAppeal(c.id);
     expectError(await resolve(a.id, { verdict: 'incorrect' }), 422, 'VERDICT_UNCHANGED');
     assert.equal((await quota(s)).used, 1);
+  });
+
+  it('R39 истёкшая проверка автоматически доступна другому исполнителю', async () => {
+    const s = await setup(), c = expectStatus(await ingest(s), 201);
+    const assigned = expectStatus(await claim(c.id), 200), oldToken = assigned.lease.token;
+    await passExpiry(assigned.lease);
+    expectError(await verdict(s, c.id, {}, { assignmentToken: oldToken }), 409, 'ASSIGNMENT_EXPIRED');
+    const waiting = expectStatus(await api('GET', `/checks/${c.id}`, { role: 'checker' }), 200);
+    assert.equal(waiting.status, 'pending'); assert.equal(waiting.assignedTo, null); assert.equal(waiting.lease, null);
+    const next = expectStatus(await api('POST', '/checks/next', { role: 'checker-2', body: { gameId: s.game.id } }), 200);
+    assert.equal(next.id, c.id); assert.notEqual(next.lease.token, oldToken);
+    expectError(await verdict(s, c.id, {}, { assignmentToken: oldToken }), 409, 'STALE_ASSIGNMENT');
+    expectError(await api('POST', `/checks/${c.id}/release`, { role: 'checker', assignmentToken: oldToken }), 409, 'STALE_ASSIGNMENT');
+    const done = expectStatus(await verdict(s, c.id, {}, { role: 'checker-2', assignmentToken: next.lease.token }), 200);
+    assert.equal(done.history.length, 1); assert.equal(done.lease, null);
+  });
+  it('R40 активность продлевает назначение, чужое и просроченное продление запрещены', async () => {
+    const s = await setup(), c = expectStatus(await ingest(s), 201);
+    const assigned = expectStatus(await claim(c.id), 200);
+    const remaining = Date.parse(assigned.lease.expiresAt) - Date.parse(await clockNow());
+    assert.ok(remaining > 0); await advanceClock(Math.max(1, Math.floor(remaining / 2)));
+    const path = `/checks/${c.id}/renew`, options = { role: 'checker', assignmentToken: assigned.lease.token };
+    expectError(await api('POST', path, { ...options, role: 'checker-2' }), 409, 'CHECK_NOT_ASSIGNED_TO_YOU');
+    const renewed = expectStatus(await api('POST', path, options), 200);
+    assert.equal(renewed.lease.token, assigned.lease.token);
+    assert.ok(Date.parse(renewed.lease.expiresAt) > Date.parse(assigned.lease.expiresAt));
+    await passExpiry(assigned.lease);
+    expectError(await claim(c.id, 'checker-2'), 409, 'CHECK_ALREADY_ASSIGNED');
+    await passExpiry(renewed.lease);
+    expectError(await api('POST', path, options), 409, 'ASSIGNMENT_EXPIRED');
+  });
+  it('R41 истёкшая апелляция возвращается в очередь без расхода или возврата квоты', async () => {
+    const s = await setup(), c = await checked(s), a = await claimedAppeal(c.id);
+    const oldToken = a.check.lease.token, used = (await quota(s)).used;
+    await passExpiry(a.check.lease);
+    expectError(await resolve(a.id), 409, 'ASSIGNMENT_EXPIRED');
+    const next = expectStatus(await api('POST', '/appeals/next', { role: 'checker-2', body: { gameId: s.game.id } }), 200);
+    assert.equal(next.id, a.id); assert.notEqual(next.check.lease.token, oldToken);
+    assert.equal(next.check.originalVerdict, 'incorrect'); assert.equal((await quota(s)).used, used);
+    await expire(s); expectStatus(await manifest(s, [c.receiptId]), 200);
+    const incomplete = await completion(s);
+    assert.equal(incomplete.complete, false); assert.ok(incomplete.pendingAppealIds.includes(a.id));
+    expectError(await resolve(a.id, {}, { assignmentToken: oldToken }), 409, 'STALE_ASSIGNMENT');
+    expectStatus(await resolve(a.id, {}, { role: 'checker-2', assignmentToken: next.check.lease.token }), 200);
+    assert.equal((await quota(s)).used, used - 1);
+  });
+  it('R42 продление и явный возврат апелляции сохраняют её и запрещают старый token', async () => {
+    const s = await setup(), c = await checked(s), a = await claimedAppeal(c.id);
+    const options = { role: 'checker', assignmentToken: a.check.lease.token };
+    const remaining = Date.parse(a.check.lease.expiresAt) - Date.parse(await clockNow());
+    assert.ok(remaining > 0); await advanceClock(Math.max(1, Math.floor(remaining / 2)));
+    const renewed = expectStatus(await api('POST', `/appeals/${a.id}/renew`, options), 200);
+    assert.ok(Date.parse(renewed.check.lease.expiresAt) > Date.parse(a.check.lease.expiresAt));
+    const released = expectStatus(await api('POST', `/appeals/${a.id}/release`, options), 200);
+    assert.equal(released.status, 'pending'); assert.equal(released.check.status, 'appeal-pending');
+    assert.equal(released.check.lease, null); assert.equal((await quota(s)).used, 1);
+    const reclaimed = expectStatus(await claimAppeal(a.id), 200);
+    assert.notEqual(reclaimed.check.lease.token, options.assignmentToken);
+    expectError(await resolve(a.id, {}, options), 409, 'STALE_ASSIGNMENT');
+    expectStatus(await resolve(a.id), 200);
+  });
+  it('R43 поздняя сдача не продлевает срок подачи апелляций', async () => {
+    const s = await setup({ submissionOpen: false, appealOpen: false }), c = await checked(s);
+    const before = await currentGame(s);
+    await fixture('PATCH', `/__test/scenarios/${s.game.id}`, { lateSubmissionAllowed: true });
+    assert.equal((await currentGame(s)).appealDeadline, before.appealDeadline);
+    expectError(await appeal(c.id), 409, 'APPEAL_DEADLINE_PASSED');
+    assert.equal((await quota(s)).used, 0);
+  });
+  it('R44 новая задача с другим эталоном не подменяет задачу бланка или апелляции', async () => {
+    const s = await setup(), c = await checked(s);
+    const alternative = expectStatus(await fixture('POST', '/__test/alternative-tasks', {
+      taskId: c.taskId, referenceAnswer: 'другой эталон'
+    }), 201);
+    assert.notEqual(alternative.id, c.taskId);
+    const a = await claimedAppeal(c.id);
+    assert.equal(a.check.taskId, c.taskId); assert.equal(a.check.referenceAnswer, '4');
+    assert.ok(!(await currentGame(s)).taskIds.includes(alternative.id));
+  });
+  it('R45 сохранение результата требует token текущего назначения', async () => {
+    const s = await setup(), c = expectStatus(await ingest(s), 201); expectStatus(await claim(c.id), 200);
+    expectError(await api('POST', `/checks/${c.id}/verdict`, { role: 'checker', body: { verdict: 'correct' } }), 422, 'VALIDATION_ERROR');
+    expectStatus(await verdict(s, c.id), 200);
+    const a = await claimedAppeal(c.id);
+    expectError(await api('POST', `/appeals/${a.id}/resolve`, { role: 'checker', body: {
+      outcome: 'jury-error-corrected', verdict: 'correct', reason: 'Пересмотр'
+    } }), 422, 'VALIDATION_ERROR');
+  });
+
+  it('R46 повтор успешного запроса после срока назначения не меняет результат и историю', async () => {
+    const s = await setup(), c = expectStatus(await ingest(s), 201);
+    const assigned = expectStatus(await claim(c.id), 200), idempotencyKey = key();
+    const options = { idempotencyKey, assignmentToken: assigned.lease.token };
+    const first = expectStatus(await verdict(s, c.id, {}, options), 200);
+    await passExpiry(assigned.lease);
+    const repeated = expectStatus(await verdict(s, c.id, {}, options), 200);
+    assert.deepEqual(repeated, first); assert.equal(repeated.history.length, 1);
+    const published = await eventually(() => events(s.game.id, 'VerdictIssued'), e => e.length > 0);
+    assert.equal(published.length, 1);
   });
 
 });
