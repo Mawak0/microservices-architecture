@@ -9,7 +9,7 @@
   "info": {
     "title": "Sapientum Intake Service",
     "version": "0.3.0",
-    "description": "Контракт приёма. Реализация отсутствует. Ошибки и правила — SERVICE.md и CONTRACTS.md."
+    "description": "Контракт реализованного сервиса приёма. Ошибки и правила — SERVICE.md и CONTRACTS.md."
   },
   "security": [
     {
