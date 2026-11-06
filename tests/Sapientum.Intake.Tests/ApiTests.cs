@@ -22,6 +22,39 @@ namespace Sapientum.Intake.Tests;
 public sealed class ApiTests
 {
     [Fact]
+    public async Task BackgroundDeliveryRecoversFromTransportFailureWithoutLosingAcceptedAnswer()
+    {
+        await using var app = new ApiFixture(); app.Backend.EventsAvailable = false;
+        using var client = app.CreateClient();
+        await app.Send(client, HttpMethod.Put, "/intake-sessions/game", new { admissionVersion = 1 });
+        using var accepted = await app.Send(client, HttpMethod.Post, "/receipts", app.Blank());
+        Assert.Equal(HttpStatusCode.Created, accepted.StatusCode);
+        var answer = await accepted.Content.ReadFromJsonAsync<JsonElement>();
+        var attempted = await app.Backend.FirstEvent.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        app.Backend.EventsAvailable = true;
+        var delivered = await app.Backend.DeliveredEvent.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.Equal(attempted.GetProperty("eventId").GetString(), delivered.GetProperty("eventId").GetString());
+        Assert.Equal(answer.GetProperty("id").GetString(), delivered.GetProperty("data").GetProperty("receiptId").GetString());
+    }
+
+    [Fact]
+    public async Task StoppingHttpApplicationDuringSendPreservesClaimedEventUntilLeaseExpires()
+    {
+        await using var app = new ApiFixture(); app.Backend.BlockEvents = true;
+        using var client = app.CreateClient();
+        await app.Send(client, HttpMethod.Put, "/intake-sessions/game", new { admissionVersion = 1 });
+        using var accepted = await app.Send(client, HttpMethod.Post, "/receipts", app.Blank());
+        Assert.Equal(HttpStatusCode.Created, accepted.StatusCode);
+        var attempted = await app.Backend.FirstEvent.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        await app.StopHostAsync();
+        var now = DateTimeOffset.UtcNow;
+        Assert.Null(await app.Database.ExecuteAsync((tx, ct) => tx.Outbox.ClaimAsync("replacement", now.AddSeconds(10), now.AddSeconds(40), ct), default));
+        var recovered = await app.Database.ExecuteAsync((tx, ct) => tx.Outbox.ClaimAsync("replacement", now.AddSeconds(31), now.AddSeconds(61), ct), default);
+        Assert.Equal(attempted.GetProperty("eventId").GetString(), recovered!.Event.EventId);
+        Assert.False(app.Backend.DeliveredEvent.Task.IsCompleted);
+    }
+
+    [Fact]
     public async Task AcceptedAnswerCanBeReadReplayedAndIncludedInCumulativeClosure()
     {
         await using var app = new ApiFixture(); using var client = app.CreateClient();
@@ -181,17 +214,20 @@ public sealed class ApiTests
     {
         private readonly string directory = Path.Combine(Path.GetTempPath(), "sapientum-http-" + Guid.NewGuid());
         private readonly WebApplicationFactory<Program> factory;
+        private bool stopped;
+        public SqliteDatabase Database { get; }
         public Dependencies Backend { get; } = new();
         public ApiFixture()
         {
             Directory.CreateDirectory(directory);
+            Database = new SqliteDatabase($"Data Source={Path.Combine(directory, "intake.db")};Pooling=False");
             factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
             {
                 builder.UseEnvironment("Testing");
                 builder.ConfigureServices(services =>
                 {
                     services.RemoveAll<SqliteDatabase>();
-                    services.AddSingleton(new SqliteDatabase($"Data Source={Path.Combine(directory, "intake.db")};Pooling=False"));
+                    services.AddSingleton(Database);
                     foreach (var name in new[] { "Games", "Teams", "Materials", "Identity", "Images", "Events" })
                         services.AddKeyedSingleton<HttpClient>(name, (_, _) => new HttpClient(Backend, disposeHandler: false) { BaseAddress = new Uri("https://dependencies.example/") });
                     services.AddSingleton<IIdentityProvider>(provider => new FaultInjectingIdentity(
@@ -222,7 +258,8 @@ public sealed class ApiTests
             request.Headers.Authorization = new("Bearer", "admin"); request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString());
             return await client.SendAsync(request);
         }
-        public async ValueTask DisposeAsync() { await factory.DisposeAsync(); Backend.Dispose(); Directory.Delete(directory, true); }
+        public async ValueTask StopHostAsync() { if (!stopped) { await factory.DisposeAsync(); stopped = true; } }
+        public async ValueTask DisposeAsync() { await StopHostAsync(); Backend.Dispose(); Directory.Delete(directory, true); }
     }
 
     private sealed class FaultInjectingIdentity(IIdentityProvider inner, Dependencies dependencies) : IIdentityProvider
@@ -235,10 +272,23 @@ public sealed class ApiTests
         public DateTimeOffset Deadline { get; set; } = DateTimeOffset.UtcNow.AddHours(1);
         public int Version { get; set; } = 1;
         public bool Late { get; set; }
+        public bool EventsAvailable { get; set; } = true;
+        public bool BlockEvents { get; set; }
+        public TaskCompletionSource<JsonElement> FirstEvent { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource<JsonElement> DeliveredEvent { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
             var path = request.RequestUri!.AbsolutePath;
             var body = request.Content is null ? default : await request.Content.ReadFromJsonAsync<JsonElement>(ct);
+            if (path == "/events")
+            {
+                // Capture the failure before waking the test that restores the transport.
+                var available = EventsAvailable;
+                FirstEvent.TrySetResult(body.Clone());
+                if (BlockEvents) await Task.Delay(Timeout.InfiniteTimeSpan, ct);
+                if (!available) return new(HttpStatusCode.ServiceUnavailable);
+                DeliveredEvent.TrySetResult(body.Clone());
+            }
             object result = path switch
             {
                 "/auth/introspect" => Identity(body.GetProperty("token").GetString()!),
