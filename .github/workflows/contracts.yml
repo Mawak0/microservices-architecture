@@ -28,10 +28,13 @@ jobs:
       - run: node validation/audit-architecture.mjs .
       - run: npm exec --yes --package=@redocly/cli@2.62.1 -- redocly lint contracts/openapi.json --extends minimal
 
+      - name: Build all service assemblies
+        run: dotnet build Sapientum.Intake.sln --configuration Release --nologo
+
       - name: Test .NET solution and collect coverage
         id: tests
         run: >-
-          dotnet test Sapientum.Intake.sln --configuration Release --nologo
+          dotnet test Sapientum.Intake.sln --configuration Release --no-build --nologo
           --collect:"XPlat Code Coverage"
           --results-directory TestResults
           --logger "trx;LogFileName=tests.trx"
