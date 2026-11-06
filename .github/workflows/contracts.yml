@@ -70,6 +70,11 @@ jobs:
           covered = sum(sum(lines.values()) for lines in modules.values())
           if not total:
               raise SystemExit('Coverage report contains no executable .NET lines.')
+          expected = {'Sapientum.Intake.Domain', 'Sapientum.Intake.Application',
+                      'Sapientum.Intake.Infrastructure', 'Sapientum.Intake.Api'}
+          missing = expected - modules.keys()
+          if missing:
+              raise SystemExit(f'Coverage is missing service assemblies: {sorted(missing)}')
           percentage = 100 * covered / total
           summary = [
               '## .NET test coverage', '',
@@ -89,6 +94,8 @@ jobs:
           with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as output:
               output.write(text)
           print(text)
+          if percentage < 90:
+              raise SystemExit(f'Line coverage {percentage:.2f}% is below the required 90%.')
 
       - name: Upload coverage and test results
         if: ${{ always() }}

@@ -25,6 +25,10 @@ export async function runRestartProbe({ serviceBase, fixtureBase, restart }) {
   const anonymous = await send(serviceBase, 'POST', '/receipts', command, undefined, key);
   assert.equal(anonymous.status, 401); assert.equal(anonymous.body.code, 'UNAUTHENTICATED');
   await restart();
+  // A process can stop after claiming an outbox event but before acknowledging it.
+  // The persisted 30-second lease must expire before another worker can deliver it.
+  // Advance the fixture clock instead of racing a 10-second wall-clock timeout.
+  assert.equal((await fixture('POST', '/__test/clock/advance', { milliseconds: 31000 })).status, 200);
   const saved = await send(serviceBase, 'GET', `/receipts/${accepted.body.id}`, undefined, 'test-system');
   assert.equal(saved.status, 200); assert.deepEqual(saved.body, accepted.body);
   const replay = await send(serviceBase, 'POST', '/receipts', command, 'test-observer', key);
