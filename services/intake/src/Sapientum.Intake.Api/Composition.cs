@@ -50,6 +50,8 @@ internal static class Composition
         services.AddSingleton<AcceptBlank>(); services.AddSingleton<SubmissionFinalizer>();
         services.AddSingleton<SynchronizeIntake>(); services.AddSingleton<CloseIntake>();
         services.AddSingleton<GetReceipt>(); services.AddSingleton<GetIntakeSession>();
+        services.AddSingleton<DeliverPendingEvent>(); services.AddSingleton<RecoverPendingSubmission>();
+        services.AddHostedService<OutboxWorker>(); services.AddHostedService<SubmissionRecoveryWorker>();
         builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = 24 * 1024 * 1024);
     }
 }

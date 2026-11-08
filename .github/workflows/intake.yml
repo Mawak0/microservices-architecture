@@ -1,0 +1,111 @@
+name: Intake implementation and contracts
+
+# Merging a PR pushes a commit to its target branch and runs this workflow again.
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: services/intake
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: services/intake/package-lock.json
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - run: npm ci
+      - run: npm test
+      - run: node --check tests/acceptance.test.mjs
+      - run: node validation/audit-architecture.mjs .
+      - run: npm exec --yes --package=@redocly/cli@2.62.1 -- redocly lint contracts/openapi.json --extends minimal
+
+      - name: Build all service assemblies
+        run: dotnet build Sapientum.Intake.sln --configuration Release --nologo
+
+      - name: Test .NET solution and collect coverage
+        id: tests
+        run: >-
+          dotnet test Sapientum.Intake.sln --configuration Release --no-build --nologo
+          --collect:"XPlat Code Coverage"
+          --results-directory TestResults
+          --logger "trx;LogFileName=tests.trx"
+          -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura
+          'DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Include=[Sapientum.Intake.*]*'
+          DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.IncludeDirectory="$GITHUB_WORKSPACE/services/intake/src/Sapientum.Intake.Api/bin/Release/net8.0/"
+
+      - name: Run service acceptance tests
+        run: npm run test:service
+
+      - name: Publish coverage percentage
+        if: ${{ always() && steps.tests.outcome != 'skipped' && steps.tests.outcome != 'cancelled' }}
+        shell: python
+        run: |
+          import os
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+
+          reports = sorted(Path('TestResults').rglob('coverage.cobertura.xml'))
+          if not reports:
+              raise SystemExit('No coverage report was produced. Check the .NET test logs.')
+          # Merge by source file and line so shared assemblies are not counted twice.
+          modules = {}
+          for report in reports:
+              root = ET.parse(report).getroot()
+              for package in root.findall('./packages/package'):
+                  lines = modules.setdefault(package.attrib['name'], {})
+                  for cls in package.findall('./classes/class'):
+                      for line in cls.findall('./lines/line'):
+                          key = (cls.attrib['filename'], int(line.attrib['number']))
+                          lines[key] = lines.get(key, False) or int(line.attrib['hits']) > 0
+          total = sum(len(lines) for lines in modules.values())
+          covered = sum(sum(lines.values()) for lines in modules.values())
+          if not total:
+              raise SystemExit('Coverage report contains no executable .NET lines.')
+          expected = {'Sapientum.Intake.Domain', 'Sapientum.Intake.Application',
+                      'Sapientum.Intake.Infrastructure', 'Sapientum.Intake.Api'}
+          missing = expected - modules.keys()
+          if missing:
+              raise SystemExit(f'Coverage is missing service assemblies: {sorted(missing)}')
+          percentage = 100 * covered / total
+          summary = [
+              '## .NET test coverage', '',
+              f'**Line coverage: {percentage:.2f}%** ({covered}/{total} executable lines)', '',
+              '| Assembly | Covered lines | Total lines | Coverage |',
+              '| --- | ---: | ---: | ---: |',
+          ]
+          for name, lines in sorted(modules.items()):
+              count = len(lines)
+              hits = sum(lines.values())
+              rate = f'{100 * hits / count:.2f}%' if count else 'N/A'
+              summary.append(f'| {name} | {hits} | {count} | {rate} |')
+          summary += ['', 'Scope: .NET service assemblies; test assemblies and the Node.js test harness are excluded.',
+                      'Download the coverage-and-test-results artifact for Cobertura XML and TRX test results.']
+          text = '\n'.join(summary) + '\n'
+          Path('TestResults/coverage-summary.md').write_text(text, encoding='utf-8')
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as output:
+              output.write(text)
+          print(text)
+          if percentage < 90:
+              raise SystemExit(f'Line coverage {percentage:.2f}% is below the required 90%.')
+
+      - name: Upload coverage and test results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-and-test-results
+          path: services/intake/TestResults/
+          if-no-files-found: warn
+          retention-days: 14
