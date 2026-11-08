@@ -55,5 +55,7 @@ internal static class CompositionRoot
             services.GetRequiredService<IClock>(), config.GetValue("Runtime:MaxBlanksPerBatch", 10000)));
         builder.Services.AddSingleton<PrepareKit>();
         builder.Services.AddSingleton<CreatePrintJob>(); builder.Services.AddSingleton<MaterialQueries>();
+        builder.Services.AddSingleton<ProcessPrintJobs>(); builder.Services.AddSingleton<PublishOutbox>();
+        builder.Services.AddHostedService<PrintWorker>(); builder.Services.AddHostedService<OutboxWorker>();
     }
 }
