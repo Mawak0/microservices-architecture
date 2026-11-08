@@ -1,0 +1,5 @@
+{
+  "key": "tic-tac-toe/v1", "format": "declarative-v1",
+  "answerSheet": [{"kind":"field","field":"heading"},{"kind":"field","field":"taskNumber"},{"kind":"field","field":"blankNumber"},{"kind":"qr"},{"kind":"answer-area"}],
+  "taskSheet": [{"kind":"field","field":"taskNumber"},{"kind":"field","field":"statement"}]
+}

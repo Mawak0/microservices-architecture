@@ -1,0 +1,9 @@
+{
+  "key": "bonuses/v1", "format": "declarative-v1",
+  "answerSheet": [
+    {"kind":"field","field":"heading"}, {"kind":"field","field":"teamName"},
+    {"kind":"field","field":"taskNumber"}, {"kind":"field","field":"blankNumber"},
+    {"kind":"field","field":"modifierLabel"}, {"kind":"qr"}, {"kind":"answer-area"}
+  ],
+  "taskSheet": [{"kind":"field","field":"taskNumber"},{"kind":"field","field":"statement"}]
+}
