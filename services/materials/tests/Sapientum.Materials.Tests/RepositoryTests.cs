@@ -86,6 +86,28 @@ public sealed class RepositoryTests
             Assert.Equal(new byte[] { 1, 2, 3 }, await s.PrintJobs.FindArtifactAsync("job", ct)); return true;
         }, default);
     }
-
-
+    [Fact] public async Task FreshDatabaseAdapterRetainsSecretBlanksReplayAndPendingEvents()
+    {
+        await using var fixture = new RepositoryFixture(); var first = await fixture.CreateAsync(true);
+        var database = new SqliteDatabase(fixture.ConnectionString); var key = await database.GetOrCreateSigningKeyAsync(null, default);
+        var dependency = new StubDependencies();
+        var issued = await new IssueBlanks(dependency, dependency, first, new HmacBlankTokenProtector(key), dependency)
+            .ExecuteAsync(Sample.Admin(), new("game", "team", "task-1", 1, null), default);
+        var reopened = await fixture.CreateAsync(true); var restoredKey = await new SqliteDatabase(fixture.ConnectionString).GetOrCreateSigningKeyAsync(null, default);
+        Assert.Equal(key, restoredKey); dependency.Unavailable = true;
+        var repeat = await new IssueBlanks(dependency, dependency, reopened, new HmacBlankTokenProtector(restoredKey), dependency)
+            .ExecuteAsync(Sample.Admin(), new("game", "team", "task-1", 1, null), default);
+        Assert.Equal(issued[0].QrToken, repeat[0].QrToken);
+        Assert.Single(await reopened.ExecuteAsync((s, ct) => s.Outbox.GetPendingAsync(100, ct), default));
+    }
+    [Fact] public async Task SqliteConcurrentIssuanceUsesUniqueSequenceAndOnlyOneReplayEffect()
+    {
+        await using var fixture = new RepositoryFixture(); var store = await fixture.CreateAsync(true); var dependency = new StubDependencies();
+        var handler = new IssueBlanks(dependency, dependency, store, new HmacBlankTokenProtector(new byte[32]), dependency);
+        var issued = await Task.WhenAll(Enumerable.Range(0, 5).Select(i => handler.ExecuteAsync(Sample.Admin($"key-{i}"), new("game", "team", "task-1", 2, null), default)));
+        Assert.Equal(10, issued.SelectMany(b => b).Select(b => b.Number).Distinct().Count());
+        var repeats = await Task.WhenAll(Enumerable.Range(0, 5).Select(_ => handler.ExecuteAsync(Sample.Admin("same"), new("game", "team", "task-1", 2, null), default)));
+        Assert.Equal(2, repeats.SelectMany(b => b).Select(b => b.Id).Distinct().Count());
+        Assert.Equal(6, (await store.ExecuteAsync((s, ct) => s.Outbox.GetPendingAsync(100, ct), default)).Count);
+    }
 }
