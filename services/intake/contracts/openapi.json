@@ -1,0 +1,392 @@
+{
+  "openapi": "3.1.0",
+  "servers": [
+    {
+      "url": "/",
+      "description": "Адрес экземпляра задаётся при развёртывании"
+    }
+  ],
+  "info": {
+    "title": "Sapientum Intake Service",
+    "version": "0.3.0",
+    "description": "Контракт реализованного сервиса приёма. Ошибки и правила — SERVICE.md и CONTRACTS.md."
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/intake-sessions/{gameId}": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "gameId",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "put": {
+        "operationId": "openIntakeSession",
+        "summary": "Открыть сеанс приёма игры",
+        "x-roles": [
+          "admin",
+          "integration"
+        ],
+        "description": "Синхронизировать приём с актуальной admissionVersion игры. Поздний приём открывается при lateSubmissionAllowed=true без нового цикла и без сброса принятых бланков. lateSubmissionAllowed выключается вручную администратором у владельца игры; appealDeadline не меняется.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdmissionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Сеанс готов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "get": {
+        "operationId": "getIntakeSession",
+        "summary": "Узнать состояние приёма",
+        "x-roles": [
+          "admin",
+          "observer",
+          "integration"
+        ],
+        "responses": {
+          "200": {
+            "description": "Состояние сеанса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/intake-sessions/{gameId}/close": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "gameId",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "closeIntakeSession",
+        "summary": "Зафиксировать полный итог приёма",
+        "x-roles": [
+          "admin",
+          "integration"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdmissionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Приём закрыт, полный manifest зафиксирован",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "description": "Закрыть приём при истёкшем сроке и выключенном lateSubmissionAllowed. Manifest включает все ранее принятые ответы этой игры."
+      }
+    },
+    "/receipts": {
+      "post": {
+        "operationId": "acceptBlank",
+        "summary": "Принять фотографию бланка",
+        "x-roles": [
+          "admin",
+          "observer"
+        ],
+        "description": "Сервер декодирует QR из полученного imageBase64, сравнивает с qrToken, проверяет подлинность в реестре и отсутствие дубликата. Нечитаемый/отсутствующий QR — 422 QR_UNREADABLE; несовпадение — 422 QR_MISMATCH; неподлинный — 422 INVALID_QR. До успешной проверки нет квитанции или ReceiptAccepted. 201 только после надёжного сохранения именно проверенного снимка и факта приёма.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitBlank"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Повтор того же запроса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Receipt"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Ответ принят",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Receipt"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/receipts/{id}": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "getReceipt",
+        "summary": "Прочитать квитанцию приёма",
+        "x-roles": [
+          "admin",
+          "observer",
+          "checker",
+          "integration"
+        ],
+        "responses": {
+          "200": {
+            "description": "Сохранённая квитанция",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Receipt"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "parameters": {
+      "IdempotencyKey": {
+        "in": "header",
+        "name": "Idempotency-Key",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "responses": {
+      "Error": {
+        "description": "401/403/404/409/422/503; коды в SERVICE.md",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "./common.json#/$defs/Error"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "Session": {
+        "type": "object",
+        "required": [
+          "gameId",
+          "admissionVersion",
+          "status",
+          "receiptIds"
+        ],
+        "properties": {
+          "gameId": {
+            "type": "string"
+          },
+          "admissionVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "status": {
+            "enum": [
+              "open",
+              "closed"
+            ]
+          },
+          "receiptIds": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "SubmitBlank": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "qrToken",
+          "imageBase64",
+          "imageMediaType",
+          "legibilityConfirmed"
+        ],
+        "properties": {
+          "qrToken": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Результат считывания интерфейсом из выбранного снимка; сервер обязан независимо повторить считывание и сверить точное значение."
+          },
+          "imageBase64": {
+            "type": "string",
+            "minLength": 1,
+            "contentEncoding": "base64",
+            "description": "Байты выбранного снимка. Проверка QR выполняется сервером на этих байтах, а не по доверенному клиентскому флагу."
+          },
+          "imageMediaType": {
+            "enum": [
+              "image/png",
+              "image/jpeg"
+            ]
+          },
+          "legibilityConfirmed": {
+            "const": true
+          }
+        }
+      },
+      "Receipt": {
+        "type": "object",
+        "required": [
+          "id",
+          "blankId",
+          "gameId",
+          "admissionVersion",
+          "teamId",
+          "imageRef",
+          "acceptedAt",
+          "taskId",
+          "taskNumber"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "blankId": {
+            "type": "string"
+          },
+          "gameId": {
+            "type": "string"
+          },
+          "admissionVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "teamId": {
+            "type": "string"
+          },
+          "imageRef": {
+            "type": "string",
+            "minLength": 1
+          },
+          "acceptedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "taskId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "taskNumber": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "AdmissionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "admissionVersion"
+        ],
+        "properties": {
+          "admissionVersion": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    }
+  }
+}
