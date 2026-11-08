@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sapientum.Materials.Domain"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sapientum.Materials.Application", "src\Sapientum.Materials.Application\Sapientum.Materials.Application.csproj", "{052874EE-48D2-483B-A0E8-00346410F85B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sapientum.Materials.Infrastructure", "src\Sapientum.Materials.Infrastructure\Sapientum.Materials.Infrastructure.csproj", "{787407B9-1820-42CB-BB6D-5ABB0204346A}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sapientum.Materials.Tests", "tests\Sapientum.Materials.Tests\Sapientum.Materials.Tests.csproj", "{74B213D1-6C33-471D-8641-AA76C7B96C57}"
 EndProject
 Global
@@ -26,6 +28,10 @@ Global
 		{052874EE-48D2-483B-A0E8-00346410F85B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{052874EE-48D2-483B-A0E8-00346410F85B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{052874EE-48D2-483B-A0E8-00346410F85B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{787407B9-1820-42CB-BB6D-5ABB0204346A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{787407B9-1820-42CB-BB6D-5ABB0204346A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{787407B9-1820-42CB-BB6D-5ABB0204346A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{787407B9-1820-42CB-BB6D-5ABB0204346A}.Release|Any CPU.Build.0 = Release|Any CPU
 		{74B213D1-6C33-471D-8641-AA76C7B96C57}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{74B213D1-6C33-471D-8641-AA76C7B96C57}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{74B213D1-6C33-471D-8641-AA76C7B96C57}.Release|Any CPU.ActiveCfg = Release|Any CPU
