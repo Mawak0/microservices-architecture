@@ -1,7 +1,7 @@
 {
   "service": "intake",
-  "stage": 2,
+  "stage": 3,
   "total": 6,
   "sourceCommit": "8a4f89479232fdfb801758a114a96849e14870ea",
-  "title": "Проверка фотографии и QR"
+  "title": "Сохранение принятого ответа"
 }
