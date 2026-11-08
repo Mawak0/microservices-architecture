@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><IsTestProject>true</IsTestProject><IsPackable>false</IsPackable></PropertyGroup>
   <ItemGroup>
-    
+    <ProjectReference Include="../../src/Sapientum.Intake.Api/Sapientum.Intake.Api.csproj" />
     <ProjectReference Include="../../src/Sapientum.Intake.Domain/Sapientum.Intake.Domain.csproj" />
     <ProjectReference Include="../../src/Sapientum.Intake.Application/Sapientum.Intake.Application.csproj" />
     <ProjectReference Include="../../src/Sapientum.Intake.Infrastructure/Sapientum.Intake.Infrastructure.csproj" />

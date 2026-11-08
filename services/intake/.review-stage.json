@@ -1,7 +1,7 @@
 {
   "service": "intake",
-  "stage": 4,
+  "stage": 5,
   "total": 6,
   "sourceCommit": "8a4f89479232fdfb801758a114a96849e14870ea",
-  "title": "Сроки и завершение приёма"
+  "title": "HTTP API и права пользователей"
 }
