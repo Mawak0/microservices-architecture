@@ -1,7 +1,7 @@
 {
   "service": "review",
-  "stage": 3,
+  "stage": 4,
   "total": 6,
   "sourceCommit": "3b08b7040ab19b52ba8c95dd99830557b67a3a5f",
-  "title": "Назначения и вердикты проверяющего"
+  "title": "Подача апелляций и общий лимит"
 }
