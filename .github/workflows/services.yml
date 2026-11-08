@@ -1,0 +1,38 @@
+name: Service review chains
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.services.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: services
+        shell: bash
+        run: |
+          node --input-type=module -e "import{existsSync}from'node:fs';import{appendFileSync}from'node:fs';const service=['materials','intake','review'].filter(x=>existsSync('services/'+x+'/.review-stage.json'));appendFileSync(process.env.GITHUB_OUTPUT,'matrix='+JSON.stringify({service:service.length?service:['layout']})+'\n')"
+  test:
+    needs: discover
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.discover.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - if: matrix.service == 'materials'
+        run: sudo apt-get update && sudo apt-get install -y fonts-dejavu-core poppler-utils
+      - if: matrix.service != 'layout'
+        run: npm ci --prefix services/${{ matrix.service }}
+      - if: matrix.service != 'layout'
+        run: node tools/review-ci.mjs ${{ matrix.service }}
+      - if: matrix.service == 'layout'
+        run: node --check tools/review-ci.mjs
