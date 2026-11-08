@@ -63,8 +63,31 @@ public sealed class DomainTests
         Code("APPEAL_QUOTA_EXHAUSTED", quota.Use); quota.Return(); Assert.Equal(0, quota.Remaining);
         quota.Return(); Assert.Equal(1, quota.Remaining);
     }
-
-
+    [Fact]
+    public void CompletionRequiresCumulativeCurrentManifestAndClosedAdmission()
+    {
+        var c = Checked(); var completion = new GameReviewCompletion("game");
+        Assert.False(completion.Assess(Game(), Now, [c], []).Complete);
+        completion.Receive(1, [c.Receipt.Id], 1);
+        Assert.True(completion.Assess(Game(), Now, [c], []).Complete);
+        Assert.False(completion.Assess(Game(2, true), Now, [c], []).Complete);
+        completion.Receive(1, [c.Receipt.Id], 2);
+        Assert.False(completion.Assess(Game(2), Now, [c], []).ManifestReceived);
+        completion.Receive(2, [c.Receipt.Id], 2);
+        Assert.True(completion.Assess(Game(2), Now, [c], []).Complete);
+        Assert.False(completion.Assess(Game(2), Now, [c, Check("late")], []).Complete);
+    }
+    [Fact]
+    public void CompletionDoesNotLeakMutableInputOrSnapshotArrays()
+    {
+        var input = new[] { "receipt" }; var completion = new GameReviewCompletion("game");
+        completion.Receive(1, input, 1); input[0] = "changed";
+        var exposed = Assert.IsType<string[]>(completion.Snapshot().ReceiptIds); exposed[0] = "changed";
+        Assert.Equal("receipt", completion.Snapshot().ReceiptIds![0]);
+        var restoreInput = new[] { "receipt" };
+        var restored = GameReviewCompletion.Restore(new("game", 1, restoreInput, false));
+        restoreInput[0] = "changed"; Assert.Equal("receipt", restored.Snapshot().ReceiptIds![0]);
+    }
     [Fact]
     public void AppealEligibilityUsesCapabilitiesNeverGameNames()
     {

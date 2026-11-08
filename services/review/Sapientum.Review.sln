@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sapientum.Review.Applicatio
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sapientum.Review.Infrastructure", "src\Sapientum.Review.Infrastructure\Sapientum.Review.Infrastructure.csproj", "{91E8BF7C-E45A-4B72-B2C6-E833E4DF3D09}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sapientum.Review.Api", "src\Sapientum.Review.Api\Sapientum.Review.Api.csproj", "{1E179E26-C26C-4EBB-B851-C9F5ED363A6E}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sapientum.Review.Tests", "tests\Sapientum.Review.Tests\Sapientum.Review.Tests.csproj", "{5999698B-7F16-4A64-81FF-127372E5BEAF}"
 EndProject
 Global
@@ -32,6 +34,10 @@ Global
 		{91E8BF7C-E45A-4B72-B2C6-E833E4DF3D09}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{91E8BF7C-E45A-4B72-B2C6-E833E4DF3D09}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{91E8BF7C-E45A-4B72-B2C6-E833E4DF3D09}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1E179E26-C26C-4EBB-B851-C9F5ED363A6E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1E179E26-C26C-4EBB-B851-C9F5ED363A6E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1E179E26-C26C-4EBB-B851-C9F5ED363A6E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1E179E26-C26C-4EBB-B851-C9F5ED363A6E}.Release|Any CPU.Build.0 = Release|Any CPU
 		{5999698B-7F16-4A64-81FF-127372E5BEAF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{5999698B-7F16-4A64-81FF-127372E5BEAF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5999698B-7F16-4A64-81FF-127372E5BEAF}.Release|Any CPU.ActiveCfg = Release|Any CPU
