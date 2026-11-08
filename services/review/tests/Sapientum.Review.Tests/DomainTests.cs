@@ -31,9 +31,30 @@ public sealed class DomainTests
         Assert.Equal("token", c.Assignment!.Token); Assert.Equal(Now.AddSeconds(90), c.Assignment.ExpiresAt);
         Code("CHECK_NOT_ASSIGNED_TO_YOU", () => c.Renew("other", "token", Now, TimeSpan.FromMinutes(1)));
     }
-
-
-
+    [Fact]
+    public void AdministratorCancelsActiveAppealAssignmentButDoesNotResolveAppeal()
+    {
+        var c = Checked(); c.OpenAppeal(); c.Claim("actor", "appeal", Now, TimeSpan.FromMinutes(1), true);
+        c.Correct(Verdict.Correct, "admin", Now, "administrative correction");
+        Assert.Equal(CheckStage.AppealPending, c.Stage); Assert.Null(c.Assignment);
+        Code("STALE_ASSIGNMENT", () => c.ResolveAppeal(false, null, "actor", "appeal", Now, "review"));
+        Assert.Equal(Verdict.Incorrect, c.OriginalVerdict); Assert.Equal(2, c.Revision);
+    }
+    [Fact]
+    public void JuryCorrectionRequiresDifferentVerdict()
+    {
+        var c = Checked(); c.OpenAppeal(); c.Claim("actor", "appeal", Now, TimeSpan.FromMinutes(1), true);
+        Code("CORRECTION_REQUIRED", () => c.ResolveAppeal(true, null, "actor", "appeal", Now, "review"));
+        Code("VERDICT_UNCHANGED", () => c.ResolveAppeal(true, Verdict.Incorrect, "actor", "appeal", Now, "review"));
+        Assert.Equal(1, c.Revision); Assert.Equal(CheckStage.AppealChecking, c.Stage);
+    }
+    [Fact]
+    public void AppealCanReturnUsageOnlyOnce()
+    {
+        var appeal = Appeal.Open("appeal", Checked(), "request");
+        Assert.True(appeal.Resolve("jury-error-corrected"));
+        Code("APPEAL_ALREADY_RESOLVED", () => appeal.Resolve("jury-error-corrected"));
+    }
     [Fact]
     public void QuotaReductionNeverErasesAlreadyConsumedUsage()
     {
