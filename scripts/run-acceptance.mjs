@@ -8,7 +8,7 @@ import { beforeRestart, afterRestart } from './reliability-probe.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const children = new Set();
-const directory = await mkdtemp(join(tmpdir(), 'sapientum-materials-'));
+const directory = await mkdtemp(join(tmpdir(), 'olympiad-materials-'));
 const logs = new Map();
 function start(command, args, env, quiet = false) {
   const child = spawn(command, args, { cwd: root, env: { ...process.env, ...env }, windowsHide: true,
@@ -42,8 +42,8 @@ async function cleanup() {
   await rm(directory, { recursive: true, force: true });
 }
 try {
-  await finish(start('dotnet', ['build', 'Sapientum.Materials.sln', '--configuration', 'Release', '--verbosity', 'minimal'], {}), 'Build');
-  await finish(start('dotnet', ['test', 'Sapientum.Materials.sln', '--configuration', 'Release', '--no-build', '--verbosity', 'minimal'], {}), 'Unit/integration/architecture tests');
+  await finish(start('dotnet', ['build', 'Olympiad.Materials.sln', '--configuration', 'Release', '--verbosity', 'minimal'], {}), 'Build');
+  await finish(start('dotnet', ['test', 'Olympiad.Materials.sln', '--configuration', 'Release', '--no-build', '--verbosity', 'minimal'], {}), 'Unit/integration/architecture tests');
   const fixtureUrl = `http://127.0.0.1:${await port()}`, serviceUrl = `http://127.0.0.1:${await port()}`;
   const fixture = start(process.execPath, ['test-support/fixtures.mjs'], { FIXTURE_PORT: new URL(fixtureUrl).port }, true);
   await ready(fixtureUrl, fixture);
@@ -52,7 +52,7 @@ try {
     Dependencies__ClockBaseUrl: fixtureUrl, Dependencies__AccessToken: 'test-system',
     Storage__ConnectionString: `Data Source=${join(directory, 'materials.db')}`
   };
-  let service = start('dotnet', ['src/Sapientum.Materials.Api/bin/Release/net8.0/Sapientum.Materials.Api.dll'], serviceEnvironment, true);
+  let service = start('dotnet', ['src/Olympiad.Materials.Api/bin/Release/net8.0/Olympiad.Materials.Api.dll'], serviceEnvironment, true);
   await ready(serviceUrl, service);
   const testEnvironment = { SERVICE_BASE_URL: serviceUrl, FIXTURE_BASE_URL: fixtureUrl, CONTRACT_TEST_ALLOW_WRITES: '1',
     PDF_ARTIFACT_DIR: process.env.PDF_ARTIFACT_DIR || directory };
@@ -61,7 +61,7 @@ try {
     await finish(start(process.execPath, ['scripts/verify-pdf.mjs'], testEnvironment), 'Rendered PDF/QR verification');
     const probe = await beforeRestart(serviceUrl, fixtureUrl);
     const stopped = new Promise(resolve => service.once('exit', resolve)); service.kill(); await stopped; children.delete(service);
-    service = start('dotnet', ['src/Sapientum.Materials.Api/bin/Release/net8.0/Sapientum.Materials.Api.dll'], serviceEnvironment, true);
+    service = start('dotnet', ['src/Olympiad.Materials.Api/bin/Release/net8.0/Olympiad.Materials.Api.dll'], serviceEnvironment, true);
     await ready(serviceUrl, service);
     await afterRestart(serviceUrl, fixtureUrl, probe);
   } catch (error) { console.error(logs.get(service)); throw error; }
