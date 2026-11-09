@@ -2,128 +2,267 @@ name: Update coverage badge
 
 on:
   workflow_run:
-    workflows: ['Intake implementation and contracts']
+    workflows: ['Intake implementation and contracts', 'Contract documents and test harness', 'Service review chains']
     types: [completed]
-    branches: ['contracts/intake-service']
   workflow_dispatch:
   push:
     branches: [main]
     paths: ['.github/workflows/coverage-badge.yml']
+  create:
+  delete:
 
 permissions:
-  actions: read
-  contents: write
+  contents: read
 
 concurrency:
   group: coverage-badge-main
   cancel-in-progress: false
 
 jobs:
-  badge:
-    if: github.event_name != 'workflow_run' || (github.event.workflow_run.event == 'push' && github.event.workflow_run.head_repository.full_name == github.repository)
+  discover:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.branches.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: main
-      - name: Generate badge from the latest CI report
+      - id: branches
+        name: Discover current branch commits
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         shell: python
         run: |
-          import json
-          import os
-          import re
-          import subprocess
-          import tempfile
+          import json, os, subprocess
+          from urllib.parse import quote
+          
+          repo = os.environ['GH_REPO']
+          pages = json.loads(subprocess.check_output(
+              ['gh', 'api', '--paginate', '--slurp', f'repos/{repo}/branches?per_page=100'], text=True))
+          branches = [{'branch': b['name'], 'sha': b['commit']['sha']} for page in pages for b in page]
+          event = json.load(open(os.environ['GITHUB_EVENT_PATH'], encoding='utf-8'))
+          if os.environ['GITHUB_EVENT_NAME'] == 'workflow_run':
+              requested = event['workflow_run']['head_branch']
+              branches = [b for b in branches if b['branch'] == requested]
+          if not branches:
+              raise SystemExit('No existing source branches to measure.')
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as out:
+              out.write('matrix=' + json.dumps({'include': branches}, separators=(',', ':')) + '\n')
+
+  measure:
+    needs: discover
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix: ${{ fromJson(needs.discover.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.sha }}
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Install PDF test dependencies
+        if: contains(matrix.branch, 'materials')
+        run: sudo apt-get update && sudo apt-get install -y fonts-dejavu-core poppler-utils
+      - name: Measure all .NET source assemblies
+        env:
+          SOURCE_BRANCH: ${{ matrix.branch }}
+          SOURCE_SHA: ${{ matrix.sha }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        shell: python
+        run: |
+          import hashlib, json, os, subprocess
           from pathlib import Path
           import xml.etree.ElementTree as ET
+          
+          source = Path('source').resolve()
+          results = Path('measurement').resolve()
+          results.mkdir(exist_ok=True)
+          record = {'branch': os.environ['SOURCE_BRANCH'], 'sha': os.environ['SOURCE_SHA'],
+                    'run': os.environ['RUN_URL'], 'status': 'no-dotnet', 'covered': None, 'total': None}
+          failed = False
+          def run(args, cwd=source):
+              global failed
+              print('+', ' '.join(map(str, args)), flush=True)
+              ok = subprocess.run(list(map(str, args)), cwd=cwd).returncode == 0
+              failed = failed or not ok
+              return ok
+          
+          try:
+              projects = list(source.rglob('*.csproj'))
+              test_projects = []
+              for project in projects:
+                  text = project.read_text(encoding='utf-8-sig')
+                  if 'Microsoft.NET.Test.Sdk' in text or '<IsTestProject>true</IsTestProject>' in text:
+                      test_projects.append(project)
+              if test_projects:
+                  record['status'] = 'error'
+                  # Change collector references only in the disposable checkout.
+                  for project in test_projects:
+                      if 'coverlet.collector' not in project.read_text(encoding='utf-8-sig'):
+                          run(['dotnet', 'add', project, 'package', 'coverlet.collector', '--version', '6.0.4'])
+                  solutions = list(source.rglob('*.sln'))
+                  roots = sorted({s.parent for s in solutions})
+                  for root in roots:
+                      if (root / 'package-lock.json').exists():
+                          run(['npm', 'ci'], root)
+                  targets = solutions or test_projects
+                  for target in targets:
+                      run(['dotnet', 'build', target, '-c', 'Release', '--nologo'])
+                  source_projects = [p for p in projects if p not in test_projects]
+                  include_dirs = sorted({str(p.parent / 'bin/Release/net8.0') + '/' for p in source_projects})
+                  for index, project in enumerate(test_projects):
+                      run(['dotnet', 'test', project, '-c', 'Release', '--no-build', '--nologo',
+                           '--collect:XPlat Code Coverage', '--results-directory', results / str(index),
+                           '--logger', 'trx;LogFileName=tests.trx', '--',
+                           'DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura',
+                           'DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Include=[Olympiad.*]*,[Sapientum.*]*',
+                           'DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.IncludeDirectory=' + ','.join(include_dirs)])
+                  modules = {}
+                  for report in results.rglob('coverage.cobertura.xml'):
+                      for package in ET.parse(report).getroot().findall('./packages/package'):
+                          lines = modules.setdefault(package.attrib['name'], {})
+                          for cls in package.findall('./classes/class'):
+                              for line in cls.findall('./lines/line'):
+                                  key = (cls.attrib['filename'], int(line.attrib['number']))
+                                  lines[key] = lines.get(key, False) or int(line.attrib['hits']) > 0
+                  total = sum(len(lines) for lines in modules.values())
+                  if total:
+                      expected = {ET.parse(p).getroot().findtext('.//AssemblyName') or p.stem for p in source_projects}
+                      missing = expected - modules.keys()
+                      record.update(covered=sum(sum(lines.values()) for lines in modules.values()), total=total,
+                                    status='partial' if missing else 'tests-failed' if failed else 'ok')
+                      if missing:
+                          record['missing'] = sorted(missing)
+                          failed = True
+                  else:
+                      failed = True
+              elif projects:
+                  record['status'] = 'no-tests'
+          except Exception as error:
+              record['status'] = 'error'
+              record['error'] = str(error)
+              failed = True
+          finally:
+              record_path = results / ('branch-' + hashlib.sha256(record['branch'].encode()).hexdigest()[:16] + '.json')
+              record_path.write_text(json.dumps(record, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+              print(json.dumps(record, ensure_ascii=False), flush=True)
+          if failed:
+              raise SystemExit(1)
+      - name: Upload branch measurement and test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: branch-coverage-${{ strategy.job-index }}
+          path: measurement/
+          retention-days: 14
+          if-no-files-found: warn
 
+  publish:
+    needs: [discover, measure]
+    if: always() && needs.discover.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      # Only the default branch is checked out with a write token.
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: branch-coverage-*
+          path: measurements
+      - name: Update branch coverage table and local SVG badges
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: python
+        run: |
+          import hashlib, json, os, re, subprocess
+          from html import escape
+          from pathlib import Path
+          from urllib.parse import quote
+          
           repo = os.environ['GH_REPO']
-          branch = 'contracts/intake-service'
-          def api(path):
-              return json.loads(subprocess.check_output(['gh', 'api', path], text=True))
-
-          # Read only completed push runs from this repository, never PR artifacts.
-          data = api(f'repos/{repo}/actions/workflows/contracts.yml/runs?branch=contracts%2Fintake-service&event=push&status=completed&per_page=1')
-          runs = data['workflow_runs']
-          if not runs:
-              raise SystemExit('No completed intake CI run found.')
-          run = runs[0]
-          if run['head_repository']['full_name'] != repo or run['head_branch'] != branch:
-              raise SystemExit('Unexpected source repository or branch.')
-          sha = run['head_sha']
-          if not re.fullmatch(r'[0-9a-f]{40}', sha):
-              raise SystemExit('Invalid source commit.')
-          run_id = int(run['id'])
-          run_url = f'https://github.com/{repo}/actions/runs/{run_id}'
-          with tempfile.TemporaryDirectory() as temp:
-              subprocess.run(['gh', 'run', 'download', str(run_id), '--repo', repo,
-                              '--name', 'coverage-and-test-results', '--dir', temp], check=True)
-              reports = list(Path(temp).rglob('coverage.cobertura.xml'))
-              if not reports:
-                  raise SystemExit('The latest CI run has no Cobertura report; keeping the previous badge.')
-              modules = {}
-              for report in reports:
-                  for package in ET.parse(report).getroot().findall('./packages/package'):
-                      name = package.attrib['name']
-                      if not re.fullmatch(r'(Olympiad|Sapientum)\.Intake\.(Api|Application|Domain|Infrastructure)', name):
-                          continue
-                      lines = modules.setdefault(name, {})
-                      for cls in package.findall('./classes/class'):
-                          for line in cls.findall('./lines/line'):
-                              key = (cls.attrib['filename'], int(line.attrib['number']))
-                              lines[key] = lines.get(key, False) or int(line.attrib['hits']) > 0
-          if {name.rsplit('.', 1)[-1] for name in modules} != {'Api', 'Application', 'Domain', 'Infrastructure'}:
-              raise SystemExit('The coverage report must include all four intake layers.')
-          total = sum(len(lines) for lines in modules.values())
-          covered = sum(sum(lines.values()) for lines in modules.values())
-          if total == 0:
-              raise SystemExit('Coverage report contains no executable lines.')
-          percent = 100 * covered / total
-          value = f'{percent:.2f}%'
-          color = '#4c1' if percent >= 90 else '#dfb317' if percent >= 70 else '#e05d44'
-          svg = (
-              '<svg xmlns="http://www.w3.org/2000/svg" width="186" height="20" role="img" '
-              f'aria-label="intake coverage: {value}">'
-              f'<title>intake coverage: {value}</title>'
-              '<rect width="186" height="20" rx="3" fill="#555"/>'
-              f'<path fill="{color}" d="M116 0h67q3 0 3 3v14q0 3-3 3h-67z"/>'
-              '<g fill="#fff" text-anchor="middle" font-family="Verdana,DejaVu Sans,sans-serif" font-size="11">'
-              '<text x="58" y="14">intake coverage</text>'
-              f'<text x="151" y="14">{value}</text></g></svg>\n'
-          )
-          target = Path('.github/badges/intake-coverage.svg')
-          target.parent.mkdir(parents=True, exist_ok=True)
-          target.write_text(svg, encoding='utf-8')
-          block = (
-              '<!-- intake-coverage:start -->\n'
-              f'[![Покрытие сервиса приёма: {value}](.github/badges/intake-coverage.svg)]({run_url})\n\n'
-              f'**Приём бланков — покрытие .NET-кода: {value}** ({covered}/{total} исполняемых строк).\n'
-              f'Все четыре слоя, включая API; ветка \x60{branch}\x60, коммит \x60{sha[:7]}\x60. '
-              f'[Отчёт CI]({run_url}). Это показатель сервиса приёма, а не всех трёх сервисов.\n'
-              '<!-- intake-coverage:end -->'
-          )
+          pages = json.loads(subprocess.check_output(['gh', 'api', '--paginate', '--slurp',
+              f'repos/{repo}/branches?per_page=100'], text=True))
+          heads = {b['name']: b['commit']['sha'] for page in pages for b in page}
+          data_path = Path('.github/badges/branches.json')
+          records = json.loads(data_path.read_text(encoding='utf-8')) if data_path.exists() else {}
+          for path in Path('measurements').rglob('branch-*.json'):
+              record = json.loads(path.read_text(encoding='utf-8'))
+              if record.get('branch') in heads and re.fullmatch(r'[0-9a-f]{40}', record.get('sha', '')):
+                  covered, total = record.get('covered'), record.get('total')
+                  if total is not None and not (isinstance(total, int) and total > 0 and isinstance(covered, int) and 0 <= covered <= total):
+                      raise ValueError('Invalid coverage counts')
+                  records[record['branch']] = record
+          records = {name: record for name, record in records.items() if name in heads}
+          data_path.parent.mkdir(parents=True, exist_ok=True)
+          rows = ['## Покрытие по веткам', '',
+                  'Покрытие исполняемых строк .NET-кода, включая все сборки сервиса и API. JavaScript-стенд и тестовые сборки не входят в процент.', '',
+                  '| Ветка | Покрытие | Строки | Проверка | Коммит |',
+                  '| --- | --- | ---: | --- | --- |']
+          labels = {'ok': 'Тесты пройдены', 'no-dotnet': 'Нет .NET-проектов', 'no-tests': 'Нет .NET-тестов',
+                    'tests-failed': 'Есть ошибки тестов/сборки', 'partial': 'Неполный отчёт', 'error': 'Ошибка измерения'}
+          for branch in sorted(heads, key=lambda b: (b != 'main', not b.startswith('contracts/'), b)):
+              record = records.get(branch, {})
+              shown = escape(branch).replace('|', '&#124;').replace('`', '&#96;')
+              branch_link = f'[{shown}](https://github.com/{repo}/tree/{quote(branch, safe="")})'
+              total = record.get('total')
+              sha = record.get('sha', '')
+              status = labels.get(record.get('status'), 'Ожидает измерения')
+              if sha and sha != heads[branch] and branch != 'main':
+                  status += '; коммит ветки изменился'
+              if total and record.get('status') != 'partial':
+                  value = f'{100 * record["covered"] / total:.2f}%'
+                  color = '#4c1' if 100 * record['covered'] / total >= 90 else '#dfb317'
+                  filename = 'branch-' + hashlib.sha256(branch.encode()).hexdigest()[:16] + '.svg'
+                  svg = (f'<svg xmlns="http://www.w3.org/2000/svg" width="140" height="20" role="img" aria-label="coverage: {value}">'
+                         f'<title>coverage: {value}</title><rect width="140" height="20" rx="3" fill="#555"/>'
+                         f'<path fill="{color}" d="M75 0h62q3 0 3 3v14q0 3-3 3H75z"/>'
+                         '<g fill="#fff" text-anchor="middle" font-family="Verdana,sans-serif" font-size="11">'
+                         f'<text x="37" y="14">coverage</text><text x="107" y="14">{value}</text></g></svg>\n')
+                  (data_path.parent / filename).write_text(svg, encoding='utf-8')
+                  run_url = record.get('run', '')
+                  if not re.fullmatch(r'https://github.com/' + re.escape(repo) + r'/actions/runs/\d+', run_url):
+                      raise ValueError('Invalid run URL')
+                  badge = f'[![{value}](.github/badges/{filename})]({run_url})'
+                  counts = f'{record["covered"]}/{total}'
+              else:
+                  badge, counts = '—', '—'
+              commit = f'[{sha[:7]}](https://github.com/{repo}/commit/{sha})' if sha else '—'
+              rows.append(f'| {branch_link} | {badge} | {counts} | {status} | {commit} |')
+          rows += ['', 'Проценты разных веток не суммируются: ветки могут содержать одинаковый код. Таблица обновляется после CI; по нажатию на бейдж открывается запуск измерения.']
+          block = '<!-- branch-coverage:start -->\n' + '\n'.join(rows) + '\n<!-- branch-coverage:end -->'
           readme = Path('README.md')
           text = readme.read_text(encoding='utf-8')
-          pattern = r'<!-- intake-coverage:start -->.*?<!-- intake-coverage:end -->'
+          pattern = r'<!-- (?:intake|branch)-coverage:start -->.*?<!-- (?:intake|branch)-coverage:end -->'
           if re.search(pattern, text, re.S):
               text = re.sub(pattern, lambda match: block, text, flags=re.S)
           else:
-              heading, separator, rest = text.partition('\n')
-              text = heading + '\n\n' + block + '\n' + separator + rest
+              title, _, rest = text.partition('\n')
+              text = title + '\n\n' + block + '\n\n' + rest
           readme.write_text(text, encoding='utf-8')
+          data_path.write_text(json.dumps(records, ensure_ascii=False, indent=2, sort_keys=True) + '\n', encoding='utf-8')
           with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as out:
-              out.write(f'Intake line coverage: **{value}** ({covered}/{total}). [Source run]({run_url})\n')
-      - name: Commit updated coverage badge
+              out.write('\n'.join(rows) + '\n')
+      - name: Commit updated coverage table
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- README.md .github/badges/intake-coverage.svg
+          git add -- README.md .github/badges/
           if git diff --cached --quiet; then
             exit 0
           fi
-          git commit -m "docs: update intake coverage badge [skip ci]"
+          git commit -m "docs: update coverage for all branches [skip ci]"
           git push origin HEAD:main
