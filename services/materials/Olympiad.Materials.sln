@@ -1,0 +1,48 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Olympiad.Materials.Domain", "src\Olympiad.Materials.Domain\Olympiad.Materials.Domain.csproj", "{97727BA7-1EC7-42A4-9963-FDBE2327C5E9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Olympiad.Materials.Application", "src\Olympiad.Materials.Application\Olympiad.Materials.Application.csproj", "{052874EE-48D2-483B-A0E8-00346410F85B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Olympiad.Materials.Infrastructure", "src\Olympiad.Materials.Infrastructure\Olympiad.Materials.Infrastructure.csproj", "{787407B9-1820-42CB-BB6D-5ABB0204346A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Olympiad.Materials.Api", "src\Olympiad.Materials.Api\Olympiad.Materials.Api.csproj", "{597DAAB9-F39D-478C-AE4A-9DEB17E0026D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Olympiad.Materials.Tests", "tests\Olympiad.Materials.Tests\Olympiad.Materials.Tests.csproj", "{74B213D1-6C33-471D-8641-AA76C7B96C57}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{97727BA7-1EC7-42A4-9963-FDBE2327C5E9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{97727BA7-1EC7-42A4-9963-FDBE2327C5E9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{97727BA7-1EC7-42A4-9963-FDBE2327C5E9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{97727BA7-1EC7-42A4-9963-FDBE2327C5E9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{052874EE-48D2-483B-A0E8-00346410F85B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{052874EE-48D2-483B-A0E8-00346410F85B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{052874EE-48D2-483B-A0E8-00346410F85B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{052874EE-48D2-483B-A0E8-00346410F85B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{787407B9-1820-42CB-BB6D-5ABB0204346A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{787407B9-1820-42CB-BB6D-5ABB0204346A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{787407B9-1820-42CB-BB6D-5ABB0204346A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{787407B9-1820-42CB-BB6D-5ABB0204346A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{597DAAB9-F39D-478C-AE4A-9DEB17E0026D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{597DAAB9-F39D-478C-AE4A-9DEB17E0026D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{597DAAB9-F39D-478C-AE4A-9DEB17E0026D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{597DAAB9-F39D-478C-AE4A-9DEB17E0026D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{74B213D1-6C33-471D-8641-AA76C7B96C57}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{74B213D1-6C33-471D-8641-AA76C7B96C57}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{74B213D1-6C33-471D-8641-AA76C7B96C57}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{74B213D1-6C33-471D-8641-AA76C7B96C57}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+	EndGlobalSection
+EndGlobal

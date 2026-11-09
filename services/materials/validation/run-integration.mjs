@@ -18,7 +18,7 @@ const roots = Object.fromEntries(services.map(name => {
   assert.ok(root, `Required: --${name} <service-worktree>`);
   return [name, path.resolve(root)];
 }));
-const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'sapientum-integration-'));
+const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'olympiad-integration-'));
 const fixture = createFixtureServer();
 const children = new Map(), logs = new Map(), urls = {};
 const images = new Map(), printedImages = new Map();
@@ -131,7 +131,7 @@ async function stopService(name) {
 
 async function startService(name) {
   const label = name[0].toUpperCase() + name.slice(1);
-  const dll = path.join(roots[name], 'src', `Sapientum.${label}.Api`, 'bin', 'Debug', 'net8.0', `Sapientum.${label}.Api.dll`);
+  const dll = path.join(roots[name], 'src', `Olympiad.${label}.Api`, 'bin', 'Debug', 'net8.0', `Olympiad.${label}.Api.dll`);
   const child = spawn('dotnet', [dll], {
     cwd: roots[name], windowsHide: true,
     env: { ...process.env, ASPNETCORE_URLS: urls[name], ASPNETCORE_ENVIRONMENT: 'ContractTests', DOTNET_ENVIRONMENT: 'ContractTests',
@@ -151,7 +151,7 @@ async function startService(name) {
 
 async function build(name) {
   const label = name[0].toUpperCase() + name.slice(1);
-  const project = path.join(roots[name], 'src', `Sapientum.${label}.Api`, `Sapientum.${label}.Api.csproj`);
+  const project = path.join(roots[name], 'src', `Olympiad.${label}.Api`, `Olympiad.${label}.Api.csproj`);
   const child = spawn('dotnet', ['build', project, '--nologo'], { cwd: roots[name], windowsHide: true, stdio: 'inherit' });
   const [code] = await once(child, 'exit'); assert.equal(code, 0, `${name} build failed`);
 }
