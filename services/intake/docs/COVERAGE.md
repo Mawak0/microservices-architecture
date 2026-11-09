@@ -58,12 +58,12 @@ API, фоновые обработчики и настройка зависим�
 ## Повторение измерения
 
 ```powershell
-dotnet build Sapientum.Intake.sln --configuration Release
-dotnet test Sapientum.Intake.sln --configuration Release --no-build --collect:"XPlat Code Coverage" --results-directory TestResults --logger "trx;LogFileName=tests.trx" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura 'DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Include=[Sapientum.Intake.*]*'
+dotnet build Olympiad.Intake.sln --configuration Release
+dotnet test Olympiad.Intake.sln --configuration Release --no-build --collect:"XPlat Code Coverage" --results-directory TestResults --logger "trx;LogFileName=tests.trx" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura 'DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Include=[Olympiad.Intake.*]*'
 npm test
 npm run test:service
 ```
 
 Для сравнения используйте отчёт одного прогона, а не смесь старых и новых измерений.
 В CI каждый запуск получает чистый каталог. Исходные тесты `tests/acceptance.test.mjs`
-не изменялись; новые .NET HTTP-тесты находятся в `tests/Sapientum.Intake.Tests/ApiTests.cs`.
+не изменялись; новые .NET HTTP-тесты находятся в `tests/Olympiad.Intake.Tests/ApiTests.cs`.
