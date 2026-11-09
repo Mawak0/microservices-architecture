@@ -1,4 +1,4 @@
-# Sapientum Materials
+# Олимпиадная платформа Materials
 
 Реализация сервиса бланков и печатных материалов: C# 12 / .NET 8 / ASP.NET Core,
 SQLite, PDFsharp и QRCoder. Исходный контракт 0.3 и 24 приёмочных сценария сохранены.
@@ -35,7 +35,7 @@ npm run test:service
 без него временные файлы удаляются вместе с тестовой БД.
 
 ```sh
-dotnet test Sapientum.Materials.sln --configuration Release
+dotnet test Olympiad.Materials.sln --configuration Release
 ```
 
 Проверяет доменные ограничения, replay при недоступных зависимостях, rollback/outbox,
@@ -53,7 +53,7 @@ $env:Dependencies__AccessToken = 'test-system'
 $env:ASPNETCORE_ENVIRONMENT = 'ContractTests'
 $env:Dependencies__ClockBaseUrl = 'http://127.0.0.1:19100'
 $env:ASPNETCORE_URLS = 'http://127.0.0.1:8081'
-dotnet run --project src/Sapientum.Materials.Api
+dotnet run --project src/Olympiad.Materials.Api
 ```
 
 Заглушки и test-* токены предназначены для локального тестирования.
