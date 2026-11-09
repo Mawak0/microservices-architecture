@@ -7,7 +7,7 @@
     }
   ],
   "info": {
-    "title": "Sapientum Materials Service",
+    "title": "Olympiad Materials Service",
     "version": "0.3.0",
     "description": "Контракт реализации сервиса материалов .NET 8. Общие правила — CONTRACTS.md; запуск и проверки — README.md."
   },

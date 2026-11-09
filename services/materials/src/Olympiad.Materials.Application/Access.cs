@@ -1,4 +1,4 @@
-namespace Sapientum.Materials.Application;
+namespace Olympiad.Materials.Application;
 
 public enum MaterialPermission { Issue, Prepare, Print, Read, ReadKit, Verify }
 public sealed class Actor(string id, IEnumerable<string> roles)

@@ -1,4 +1,4 @@
-namespace Sapientum.Materials.Domain;
+namespace Olympiad.Materials.Domain;
 
 public enum PrintStatus { Pending, Running, Completed, Failed }
 public sealed record PrintFailure(string Code, string Message);

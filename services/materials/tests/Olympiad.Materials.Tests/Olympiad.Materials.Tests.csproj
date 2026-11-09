@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><IsTestProject>true</IsTestProject><IsPackable>false</IsPackable></PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="../../src/Sapientum.Materials.Application/Sapientum.Materials.Application.csproj" />
+    <ProjectReference Include="../../src/Olympiad.Materials.Application/Olympiad.Materials.Application.csproj" />
     
     
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />

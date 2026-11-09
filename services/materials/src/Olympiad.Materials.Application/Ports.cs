@@ -1,6 +1,6 @@
-using Sapientum.Materials.Domain;
+using Olympiad.Materials.Domain;
 
-namespace Sapientum.Materials.Application;
+namespace Olympiad.Materials.Application;
 
 public interface IGameMaterialsGateway { Task<GameMaterials> GetAsync(string id, CancellationToken cancellationToken); }
 public interface ITeamAdmissionGateway { Task<TeamAdmission> GetAsync(string id, CancellationToken cancellationToken); }

@@ -3,11 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sapientum.Materials.Domain", "src\Sapientum.Materials.Domain\Sapientum.Materials.Domain.csproj", "{97727BA7-1EC7-42A4-9963-FDBE2327C5E9}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Olympiad.Materials.Domain", "src\Olympiad.Materials.Domain\Olympiad.Materials.Domain.csproj", "{97727BA7-1EC7-42A4-9963-FDBE2327C5E9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sapientum.Materials.Application", "src\Sapientum.Materials.Application\Sapientum.Materials.Application.csproj", "{052874EE-48D2-483B-A0E8-00346410F85B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Olympiad.Materials.Application", "src\Olympiad.Materials.Application\Olympiad.Materials.Application.csproj", "{052874EE-48D2-483B-A0E8-00346410F85B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sapientum.Materials.Tests", "tests\Sapientum.Materials.Tests\Sapientum.Materials.Tests.csproj", "{74B213D1-6C33-471D-8641-AA76C7B96C57}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Olympiad.Materials.Tests", "tests\Olympiad.Materials.Tests\Olympiad.Materials.Tests.csproj", "{74B213D1-6C33-471D-8641-AA76C7B96C57}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

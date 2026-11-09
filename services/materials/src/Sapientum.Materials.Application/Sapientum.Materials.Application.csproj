@@ -1,3 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-  <ItemGroup><ProjectReference Include="../Sapientum.Materials.Domain/Sapientum.Materials.Domain.csproj" /></ItemGroup>
-</Project>

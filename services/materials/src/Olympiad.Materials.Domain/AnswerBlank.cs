@@ -1,4 +1,4 @@
-namespace Sapientum.Materials.Domain;
+namespace Olympiad.Materials.Domain;
 
 public enum ModifierKind { Add, Multiply }
 

@@ -1,6 +1,6 @@
 using System.Collections.ObjectModel;
 
-namespace Sapientum.Materials.Domain;
+namespace Olympiad.Materials.Domain;
 
 public enum TemplateValueKind { Null, Text, Number, Boolean }
 public sealed record TemplateValue(TemplateValueKind Kind, string? Text = null, decimal Number = 0, bool Boolean = false)
