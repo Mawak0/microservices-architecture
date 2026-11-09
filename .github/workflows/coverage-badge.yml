@@ -119,7 +119,15 @@ jobs:
                   source_projects = [p for p in projects if p not in test_projects]
                   include_dirs = sorted({str(p.parent / 'bin/Release/net8.0') + '/' for p in source_projects})
                   for index, project in enumerate(test_projects):
+                      # Verify every test on the original assemblies first. Coverlet adds a
+                      # netstandard reference which changes reflection-based dependency checks.
                       run(['dotnet', 'test', project, '-c', 'Release', '--no-build', '--nologo',
+                           '--results-directory', results / str(index) / 'baseline',
+                           '--logger', 'trx;LogFileName=all-tests.trx'])
+                      # This dependency assertion already ran above. No application source
+                      # is excluded from coverage; functional tests still run instrumented.
+                      run(['dotnet', 'test', project, '-c', 'Release', '--no-build', '--nologo',
+                           '--filter', 'FullyQualifiedName!~ArchitectureTests.CompiledCoreAssembliesDependOnlyInwards',
                            '--collect:XPlat Code Coverage', '--results-directory', results / str(index),
                            '--logger', 'trx;LogFileName=tests.trx', '--',
                            'DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura',
