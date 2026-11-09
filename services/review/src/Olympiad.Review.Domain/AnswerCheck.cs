@@ -1,4 +1,4 @@
-namespace Sapientum.Review.Domain;
+namespace Olympiad.Review.Domain;
 public enum CheckStage { Pending, Checking, Checked, AppealPending, AppealChecking }
 public sealed record Receipt(string Id, string BlankId, string GameId, int AdmissionVersion,
     string TeamId, string TaskId, string TaskNumber, string ImageRef, DateTimeOffset AcceptedAt);

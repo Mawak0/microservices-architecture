@@ -1,4 +1,4 @@
-namespace Sapientum.Review.Domain;
+namespace Olympiad.Review.Domain;
 public sealed record CompletionSnapshot(string GameId, int AdmissionVersion,
     IReadOnlyList<string>? ReceiptIds, bool Published);
 public sealed record CompletionAssessment(string GameId, int AdmissionVersion, bool ManifestReceived,

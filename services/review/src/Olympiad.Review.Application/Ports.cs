@@ -1,5 +1,5 @@
-using Sapientum.Review.Domain;
-namespace Sapientum.Review.Application;
+using Olympiad.Review.Domain;
+namespace Olympiad.Review.Application;
 public interface IClock { Task<DateTimeOffset> Now(CancellationToken cancellationToken); }
 public interface IGameProfiles { Task<GameProfile> Get(string id, CancellationToken cancellationToken); }
 public interface IAcceptedReceipts { Task<Receipt> Get(string id, CancellationToken cancellationToken); }

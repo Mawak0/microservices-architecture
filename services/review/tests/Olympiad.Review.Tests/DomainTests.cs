@@ -1,6 +1,6 @@
-using Sapientum.Review.Domain;
+using Olympiad.Review.Domain;
 using Xunit;
-namespace Sapientum.Review.Tests;
+namespace Olympiad.Review.Tests;
 
 public sealed class DomainTests
 {

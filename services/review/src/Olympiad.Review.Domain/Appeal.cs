@@ -1,4 +1,4 @@
-namespace Sapientum.Review.Domain;
+namespace Olympiad.Review.Domain;
 public sealed record AppealSnapshot(string Id, string CheckId, string GameId, string TeamId,
     string TaskId, string Reason, bool Resolved, string? Outcome, bool UsageReturned);
 public sealed class Appeal

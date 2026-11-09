@@ -3,11 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sapientum.Review.Domain", "src\Sapientum.Review.Domain\Sapientum.Review.Domain.csproj", "{A989E9D2-EAB4-428E-9AC8-4B60E3B2D608}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Olympiad.Review.Domain", "src\Olympiad.Review.Domain\Olympiad.Review.Domain.csproj", "{A989E9D2-EAB4-428E-9AC8-4B60E3B2D608}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sapientum.Review.Application", "src\Sapientum.Review.Application\Sapientum.Review.Application.csproj", "{E57D11C1-0093-4419-8F72-6CC5A3CACD3F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Olympiad.Review.Application", "src\Olympiad.Review.Application\Olympiad.Review.Application.csproj", "{E57D11C1-0093-4419-8F72-6CC5A3CACD3F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sapientum.Review.Tests", "tests\Sapientum.Review.Tests\Sapientum.Review.Tests.csproj", "{5999698B-7F16-4A64-81FF-127372E5BEAF}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Olympiad.Review.Tests", "tests\Olympiad.Review.Tests\Olympiad.Review.Tests.csproj", "{5999698B-7F16-4A64-81FF-127372E5BEAF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
