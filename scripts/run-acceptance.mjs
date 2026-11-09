@@ -32,15 +32,15 @@ async function ready(child, url) {
 }
 let directory;
 try {
-  const build = start('dotnet', ['build', 'Sapientum.Review.sln', '--nologo']);
+  const build = start('dotnet', ['build', 'Olympiad.Review.sln', '--nologo']);
   if (await exitCode(build)) throw new Error(logs.get(build));
   process.stdout.write(logs.get(build));
-  directory = await mkdtemp(join(tmpdir(), 'sapientum-review-'));
+  directory = await mkdtemp(join(tmpdir(), 'olympiad-review-'));
   const fixturePort = await port(), servicePort = await port();
   const fixtureUrl = 'http://127.0.0.1:' + fixturePort, serviceUrl = 'http://127.0.0.1:' + servicePort;
   const fixtures = start(process.execPath, ['test-support/fixtures.mjs'], { FIXTURE_PORT: String(fixturePort) });
   await ready(fixtures, fixtureUrl);
-  const service = start('dotnet', ['src/Sapientum.Review.Api/bin/Debug/net8.0/Sapientum.Review.Api.dll'], {
+  const service = start('dotnet', ['src/Olympiad.Review.Api/bin/Debug/net8.0/Olympiad.Review.Api.dll'], {
     ASPNETCORE_URLS: serviceUrl, ASPNETCORE_ENVIRONMENT: 'ContractTests',
     Dependencies__BaseUrl: fixtureUrl, Dependencies__ClockBaseUrl: fixtureUrl,
     Dependencies__AccessToken: 'test-system', Storage__ConnectionString: 'Data Source=' + join(directory, 'review.db'),
