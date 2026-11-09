@@ -25,6 +25,9 @@ jobs:
     outputs:
       matrix: ${{ steps.branches.outputs.matrix }}
     steps:
+      - uses: actions/checkout@v4
+      - name: Verify coverage discovery across coalesced events
+        run: python -m unittest discover -s tests -p coverage_workflow_test.py
       - id: branches
         name: Discover current branch commits
         env:
@@ -39,10 +42,9 @@ jobs:
           pages = json.loads(subprocess.check_output(
               ['gh', 'api', '--paginate', '--slurp', f'repos/{repo}/branches?per_page=100'], text=True))
           branches = [{'branch': b['name'], 'sha': b['commit']['sha']} for page in pages for b in page]
-          event = json.load(open(os.environ['GITHUB_EVENT_PATH'], encoding='utf-8'))
-          if os.environ['GITHUB_EVENT_NAME'] == 'workflow_run':
-              requested = event['workflow_run']['head_branch']
-              branches = [b for b in branches if b['branch'] == requested]
+          # Concurrency coalesces completed workflows into a single pending run.
+          # Always measure all heads: a newer pending run must not drop coverage
+          # updates for other branches whose triggers it superseded.
           if not branches:
               raise SystemExit('No existing source branches to measure.')
           with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as out:
