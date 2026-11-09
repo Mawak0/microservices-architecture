@@ -1,1 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk"><ItemGroup><ProjectReference Include="../Sapientum.Review.Application/Sapientum.Review.Application.csproj" /><PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.31" /><PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="3.53.3" /></ItemGroup></Project>
