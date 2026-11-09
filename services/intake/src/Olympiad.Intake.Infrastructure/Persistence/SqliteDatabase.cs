@@ -1,7 +1,7 @@
 using Microsoft.Data.Sqlite;
-using Sapientum.Intake.Application;
+using Olympiad.Intake.Application;
 
-namespace Sapientum.Intake.Infrastructure.Persistence;
+namespace Olympiad.Intake.Infrastructure.Persistence;
 
 public sealed class SqliteDatabase(string connectionString) : IIntakeUnitOfWork
 {

@@ -1,4 +1,4 @@
-namespace Sapientum.Intake.Domain;
+namespace Olympiad.Intake.Domain;
 
 public abstract record IntakeEvent(string EventId, DateTimeOffset OccurredAt, string AggregateId)
 {

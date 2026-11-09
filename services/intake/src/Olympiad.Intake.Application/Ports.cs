@@ -1,6 +1,6 @@
-using Sapientum.Intake.Domain;
+using Olympiad.Intake.Domain;
 
-namespace Sapientum.Intake.Application;
+namespace Olympiad.Intake.Application;
 
 public interface IClock { ValueTask<DateTimeOffset> NowAsync(CancellationToken cancellationToken); }
 public interface IAdmissionGateway { Task<Admission> GetAsync(string gameId, CancellationToken cancellationToken); }

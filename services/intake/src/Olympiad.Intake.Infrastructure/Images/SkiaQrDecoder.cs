@@ -1,10 +1,10 @@
-using Sapientum.Intake.Application;
-using Sapientum.Intake.Domain;
+using Olympiad.Intake.Application;
+using Olympiad.Intake.Domain;
 using SkiaSharp;
 using ZXing;
 using ZXing.Common;
 
-namespace Sapientum.Intake.Infrastructure.Images;
+namespace Olympiad.Intake.Infrastructure.Images;
 
 public sealed class SkiaQrDecoder : IImageQrDecoder
 {

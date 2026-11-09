@@ -1,7 +1,7 @@
-using Sapientum.Intake.Domain;
+using Olympiad.Intake.Domain;
 using Xunit;
 
-namespace Sapientum.Intake.Tests;
+namespace Olympiad.Intake.Tests;
 
 public sealed class DomainTests
 {

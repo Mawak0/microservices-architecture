@@ -1,11 +1,11 @@
-using Sapientum.Intake.Domain;
-using Sapientum.Intake.Infrastructure.Images;
+using Olympiad.Intake.Domain;
+using Olympiad.Intake.Infrastructure.Images;
 using SkiaSharp;
 using ZXing;
 using ZXing.QrCode;
 using Xunit;
 
-namespace Sapientum.Intake.Tests;
+namespace Olympiad.Intake.Tests;
 
 public sealed class QrDecoderTests
 {

@@ -7,7 +7,7 @@
     }
   ],
   "info": {
-    "title": "Sapientum Intake Service",
+    "title": "Olympiad Intake Service",
     "version": "0.3.0",
     "description": "Контракт реализованного сервиса приёма. Ошибки и правила — SERVICE.md и CONTRACTS.md."
   },

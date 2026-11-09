@@ -1,11 +1,11 @@
 using System.Net;
 using System.Text;
-using Sapientum.Intake.Application;
-using Sapientum.Intake.Domain;
-using Sapientum.Intake.Infrastructure.Http;
+using Olympiad.Intake.Application;
+using Olympiad.Intake.Domain;
+using Olympiad.Intake.Infrastructure.Http;
 using Xunit;
 
-namespace Sapientum.Intake.Tests;
+namespace Olympiad.Intake.Tests;
 
 public sealed class HttpAdapterTests
 {

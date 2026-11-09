@@ -1,7 +1,7 @@
-using Sapientum.Intake.Application;
-using Sapientum.Intake.Domain;
+using Olympiad.Intake.Application;
+using Olympiad.Intake.Domain;
 
-namespace Sapientum.Intake.Infrastructure.Http;
+namespace Olympiad.Intake.Infrastructure.Http;
 
 public sealed class HttpAdmissionGateway(HttpClient client) : IAdmissionGateway
 {

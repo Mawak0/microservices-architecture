@@ -1,8 +1,8 @@
 using System.Text.Json;
-using Sapientum.Intake.Application;
-using Sapientum.Intake.Domain;
+using Olympiad.Intake.Application;
+using Olympiad.Intake.Domain;
 
-namespace Sapientum.Intake.Infrastructure.Persistence;
+namespace Olympiad.Intake.Infrastructure.Persistence;
 
 internal sealed class OutboxRepository(SqliteScope db) : IOutboxRepository
 {

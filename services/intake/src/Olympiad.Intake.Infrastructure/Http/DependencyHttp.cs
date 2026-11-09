@@ -1,9 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
-using Sapientum.Intake.Domain;
+using Olympiad.Intake.Domain;
 
-namespace Sapientum.Intake.Infrastructure.Http;
+namespace Olympiad.Intake.Infrastructure.Http;
 
 internal sealed class DependencyHttp(HttpClient client)
 {

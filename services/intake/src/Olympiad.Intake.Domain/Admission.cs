@@ -1,4 +1,4 @@
-namespace Sapientum.Intake.Domain;
+namespace Olympiad.Intake.Domain;
 
 public sealed record Admission(string GameId, int Version, string Status,
     DateTimeOffset SubmissionDeadline, bool LateSubmissionAllowed)

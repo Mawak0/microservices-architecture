@@ -1,7 +1,7 @@
 using System.Text.Json;
-using Sapientum.Intake.Application;
+using Olympiad.Intake.Application;
 
-namespace Sapientum.Intake.Infrastructure.Persistence;
+namespace Olympiad.Intake.Infrastructure.Persistence;
 
 internal sealed class OperationRepository(SqliteScope db) : IOperationRepository
 {

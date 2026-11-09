@@ -3,13 +3,13 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sapientum.Intake.Domain", "src\Sapientum.Intake.Domain\Sapientum.Intake.Domain.csproj", "{703AD46A-0817-4B1E-9CE1-8A61502989DD}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Olympiad.Intake.Domain", "src\Olympiad.Intake.Domain\Olympiad.Intake.Domain.csproj", "{703AD46A-0817-4B1E-9CE1-8A61502989DD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sapientum.Intake.Application", "src\Sapientum.Intake.Application\Sapientum.Intake.Application.csproj", "{6AE5F2B7-A971-4B32-83C9-C6568760A87C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Olympiad.Intake.Application", "src\Olympiad.Intake.Application\Olympiad.Intake.Application.csproj", "{6AE5F2B7-A971-4B32-83C9-C6568760A87C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sapientum.Intake.Infrastructure", "src\Sapientum.Intake.Infrastructure\Sapientum.Intake.Infrastructure.csproj", "{37FB9E7D-5D15-43E8-B90E-BEC6014FDDF4}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Olympiad.Intake.Infrastructure", "src\Olympiad.Intake.Infrastructure\Olympiad.Intake.Infrastructure.csproj", "{37FB9E7D-5D15-43E8-B90E-BEC6014FDDF4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sapientum.Intake.Tests", "tests\Sapientum.Intake.Tests\Sapientum.Intake.Tests.csproj", "{733B3CE0-346B-4588-8602-51431AF564F0}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Olympiad.Intake.Tests", "tests\Olympiad.Intake.Tests\Olympiad.Intake.Tests.csproj", "{733B3CE0-346B-4588-8602-51431AF564F0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

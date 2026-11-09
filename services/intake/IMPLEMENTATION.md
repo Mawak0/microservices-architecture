@@ -1,4 +1,4 @@
-# Implementation standard: Sapientum services
+# Implementation standard: olympiad services
 
 All three implementations use C# 12 / .NET 8 / ASP.NET Core, SQLite via
 Microsoft.Data.Sqlite, and xUnit. Existing Node acceptance tests remain the
@@ -6,19 +6,19 @@ language-neutral contract. Implement their real behavior without weakening tests
 
 ## Dependency rule
 
-- src/Sapientum.<Service>.Domain: BCL only, zero project/package references.
+- src/Olympiad.<Service>.Domain: BCL only, zero project/package references.
   Rich aggregates/value objects own invariants. No HTTP status, JSON, SQL, DI,
   filesystem, clocks obtained through globals, or network operations.
-- src/Sapientum.<Service>.Application: references Domain only; owns small,
+- src/Olympiad.<Service>.Application: references Domain only; owns small,
   capability-specific ports, commands/queries and orchestration. No frameworks,
   SQL, HttpClient, JsonElement/dynamic business state, service locator, or globals.
-- src/Sapientum.<Service>.Infrastructure: references Domain/Application; implements
+- src/Olympiad.<Service>.Infrastructure: references Domain/Application; implements
   SQLite repositories/transactions, external HTTP gateways, clock, outbox and
   QR/PDF/file adapters. Serialization models remain adapter-local.
-- src/Sapientum.<Service>.Api: HTTP binding, authorization, error mapping and
+- src/Olympiad.<Service>.Api: HTTP binding, authorization, error mapping and
   composition root. Business decisions belong inward, not to endpoint handlers.
   Infrastructure reference is permitted only for composition.
-- tests/Sapientum.<Service>.Tests: xUnit domain/application/infrastructure tests
+- tests/Olympiad.<Service>.Tests: xUnit domain/application/infrastructure tests
   and architecture checks for actual project/assembly dependency boundaries.
 
 Choose explicit aggregate repositories and transaction boundaries; never a giant

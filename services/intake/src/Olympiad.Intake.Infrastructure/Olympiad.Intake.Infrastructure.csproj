@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
-    <ProjectReference Include="../Sapientum.Intake.Application/Sapientum.Intake.Application.csproj" />
+    <ProjectReference Include="../Olympiad.Intake.Application/Olympiad.Intake.Application.csproj" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.31" />
     <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="3.53.3" />
     <PackageReference Include="SkiaSharp" Version="3.119.4" />
