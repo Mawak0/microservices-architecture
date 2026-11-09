@@ -1,6 +1,6 @@
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
-namespace Sapientum.Review.Infrastructure;
+namespace Olympiad.Review.Infrastructure;
 internal sealed class DatabaseScope(SqliteConnection connection, SqliteTransaction transaction,
     CancellationToken cancellationToken)
 {

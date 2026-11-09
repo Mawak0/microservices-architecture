@@ -1,6 +1,6 @@
 using System.Text.Json;
-using Sapientum.Review.Application;
-namespace Sapientum.Review.Infrastructure;
+using Olympiad.Review.Application;
+namespace Olympiad.Review.Infrastructure;
 internal static class EventSerialization
 {
     public static string Serialize(ReviewEvent message) => JsonSerializer.Serialize(new

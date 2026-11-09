@@ -1,5 +1,5 @@
 using Microsoft.Data.Sqlite;
-namespace Sapientum.Review.Infrastructure;
+namespace Olympiad.Review.Infrastructure;
 public sealed class SqliteDatabase
 {
     private readonly string connectionString;

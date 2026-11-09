@@ -1,5 +1,5 @@
-using Sapientum.Review.Application;
-namespace Sapientum.Review.Infrastructure;
+using Olympiad.Review.Application;
+namespace Olympiad.Review.Infrastructure;
 /// <summary>At-least-once publication, with the exact committed event ID on every attempt.</summary>
 public sealed class OutboxDispatcher(SqliteDatabase database, IEventPublisher publisher) : IOutboxDelivery
 {

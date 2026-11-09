@@ -1,5 +1,5 @@
-using Sapientum.Review.Domain;
-namespace Sapientum.Review.Application;
+using Olympiad.Review.Domain;
+namespace Olympiad.Review.Application;
 public sealed class ReceiveReceipt(ITransactions transactions, IAcceptedReceipts receipts, ITaskAnswers tasks)
 {
     public async Task<Outcome<CheckView>> Execute(CommandIdentity identity, string eventId, Receipt incoming,

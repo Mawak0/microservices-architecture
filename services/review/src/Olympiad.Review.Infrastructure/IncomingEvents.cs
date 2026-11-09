@@ -1,5 +1,5 @@
-using Sapientum.Review.Application;
-namespace Sapientum.Review.Infrastructure;
+using Olympiad.Review.Application;
+namespace Olympiad.Review.Infrastructure;
 internal sealed class IncomingEvents(DatabaseScope database) : IIncomingEvents
 {
     public string? ReceiptForEvent(string eventId)

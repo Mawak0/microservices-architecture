@@ -1,8 +1,8 @@
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
-using Sapientum.Review.Application;
-using Sapientum.Review.Domain;
-namespace Sapientum.Review.Infrastructure;
+using Olympiad.Review.Application;
+using Olympiad.Review.Domain;
+namespace Olympiad.Review.Infrastructure;
 public sealed class SqliteTransactions(SqliteDatabase database) : ITransactions
 {
     public Task<Outcome<T>?> Replay<T>(CommandIdentity identity, CancellationToken cancellationToken)

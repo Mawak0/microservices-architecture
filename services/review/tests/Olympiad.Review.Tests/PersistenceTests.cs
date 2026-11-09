@@ -1,12 +1,12 @@
 using Microsoft.Data.Sqlite;
-using Sapientum.Review.Application;
-using Sapientum.Review.Domain;
-using Sapientum.Review.Infrastructure;
+using Olympiad.Review.Application;
+using Olympiad.Review.Domain;
+using Olympiad.Review.Infrastructure;
 using Xunit;
-namespace Sapientum.Review.Tests;
+namespace Olympiad.Review.Tests;
 public sealed class PersistenceTests : IDisposable
 {
-    private readonly string directory = Path.Combine(Path.GetTempPath(), "sapientum-review-tests-" + Guid.NewGuid());
+    private readonly string directory = Path.Combine(Path.GetTempPath(), "olympiad-review-tests-" + Guid.NewGuid());
     private SqliteDatabase Database()
     {
         var database = new SqliteDatabase("Data Source=" + Path.Combine(directory, "review.db"));

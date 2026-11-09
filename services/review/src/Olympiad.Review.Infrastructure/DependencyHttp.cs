@@ -1,8 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
-using Sapientum.Review.Domain;
-namespace Sapientum.Review.Infrastructure;
+using Olympiad.Review.Domain;
+namespace Olympiad.Review.Infrastructure;
 public sealed class DependencyHttp(HttpClient client, Uri baseAddress, string? accessToken)
 {
     private HttpRequestMessage Request(HttpMethod method, string path, HttpContent? content)

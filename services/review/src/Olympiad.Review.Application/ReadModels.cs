@@ -1,5 +1,5 @@
-using Sapientum.Review.Domain;
-namespace Sapientum.Review.Application;
+using Olympiad.Review.Domain;
+namespace Olympiad.Review.Application;
 public sealed record LeaseView(string Token, DateTimeOffset ExpiresAt);
 public sealed record HistoryView(string Verdict, string ActorId, DateTimeOffset RecordedAt, string? Reason);
 public sealed record CheckView(string Id, string ReceiptId, string BlankId, string GameId,

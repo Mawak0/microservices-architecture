@@ -1,4 +1,4 @@
-namespace Sapientum.Review.Domain;
+namespace Olympiad.Review.Domain;
 public enum FailureKind { Validation, Conflict, Missing, Dependency }
 public sealed class DomainFailure(string code, FailureKind kind = FailureKind.Conflict, string? message = null)
     : Exception(message ?? code)

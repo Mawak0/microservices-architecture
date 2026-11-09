@@ -1,6 +1,6 @@
-using Sapientum.Review.Application;
-using Sapientum.Review.Domain;
-namespace Sapientum.Review.Infrastructure;
+using Olympiad.Review.Application;
+using Olympiad.Review.Domain;
+namespace Olympiad.Review.Infrastructure;
 internal sealed class CompletionRepository(DatabaseScope database) : ICompletionRepository
 {
     public IReadOnlyList<string> TrackedGames()
