@@ -1,5 +1,13 @@
 # Микросервисы олимпиадной платформы
 
+<!-- intake-coverage:start -->
+[![Покрытие сервиса приёма: 94.30%](.github/badges/intake-coverage.svg)](https://github.com/Mawak0/microservices-architecture/actions/runs/42570045845)
+
+**Приём бланков — покрытие .NET-кода: 94.30%** (629/667 исполняемых строк).
+Все четыре слоя, включая API; ветка `contracts/intake-service`, коммит `018061d`. [Отчёт CI](https://github.com/Mawak0/microservices-architecture/actions/runs/42570045845). Это показатель сервиса приёма, а не всех трёх сервисов.
+<!-- intake-coverage:end -->
+
+
 Репозиторий содержит три сервиса: бланки и печатные материалы, приём бланков,
 проверка ответов и апелляции.
 
