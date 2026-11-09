@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
-    <ProjectReference Include="../Sapientum.Materials.Application/Sapientum.Materials.Application.csproj" />
+    <ProjectReference Include="../Olympiad.Materials.Application/Olympiad.Materials.Application.csproj" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.31" />
     <!-- Keep the native SQLite engine above the CVE-2025-6965 affected releases. -->
     <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="3.53.3" />

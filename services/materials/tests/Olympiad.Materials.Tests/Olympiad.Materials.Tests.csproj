@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><IsTestProject>true</IsTestProject><IsPackable>false</IsPackable></PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="../../src/Sapientum.Materials.Infrastructure/Sapientum.Materials.Infrastructure.csproj" />
+    <ProjectReference Include="../../src/Olympiad.Materials.Infrastructure/Olympiad.Materials.Infrastructure.csproj" />
     
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageReference Include="xunit" Version="2.9.2" />

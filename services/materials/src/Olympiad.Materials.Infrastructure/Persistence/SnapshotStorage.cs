@@ -1,7 +1,7 @@
 using System.Text.Json;
-using Sapientum.Materials.Domain;
+using Olympiad.Materials.Domain;
 
-namespace Sapientum.Materials.Infrastructure.Persistence;
+namespace Olympiad.Materials.Infrastructure.Persistence;
 
 // This adapter-specific document is an immutable print snapshot, not an aggregate database or business dispatcher.
 internal sealed record StoredBlank(string Id, long Number, string GameId, string TeamId, string TaskId, string TaskNumber,

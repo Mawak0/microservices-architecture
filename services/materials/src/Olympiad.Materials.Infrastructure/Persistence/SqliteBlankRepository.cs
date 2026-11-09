@@ -1,9 +1,9 @@
 using Microsoft.Data.Sqlite;
-using Sapientum.Materials.Application;
-using Sapientum.Materials.Domain;
+using Olympiad.Materials.Application;
+using Olympiad.Materials.Domain;
 using System.Globalization;
 
-namespace Sapientum.Materials.Infrastructure.Persistence;
+namespace Olympiad.Materials.Infrastructure.Persistence;
 
 internal sealed class SqliteBlankRepository(SqliteConnection connection, SqliteTransaction transaction)
     : SqliteRepository(connection, transaction), IBlankRepository

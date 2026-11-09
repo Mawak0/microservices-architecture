@@ -1,4 +1,4 @@
-namespace Sapientum.Materials.Domain;
+namespace Olympiad.Materials.Domain;
 
 public sealed class TeamKit
 {

@@ -1,6 +1,6 @@
 using System.Collections.ObjectModel;
 
-namespace Sapientum.Materials.Domain;
+namespace Olympiad.Materials.Domain;
 
 public sealed record TaskAssignment(string TaskId, string TaskNumber);
 

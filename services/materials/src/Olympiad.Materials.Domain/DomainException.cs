@@ -1,4 +1,4 @@
-namespace Sapientum.Materials.Domain;
+namespace Olympiad.Materials.Domain;
 
 /// <summary>A stable business failure; transport status mapping belongs to the API adapter.</summary>
 public sealed class DomainException(string code, string message) : Exception(message)

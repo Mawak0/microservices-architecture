@@ -1,8 +1,8 @@
-using Sapientum.Materials.Application;
-using Sapientum.Materials.Domain;
+using Olympiad.Materials.Application;
+using Olympiad.Materials.Domain;
 using Xunit;
 
-namespace Sapientum.Materials.Tests;
+namespace Olympiad.Materials.Tests;
 
 public sealed class DomainTests
 {

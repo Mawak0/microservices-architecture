@@ -1,10 +1,10 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using Sapientum.Materials.Application;
-using Sapientum.Materials.Domain;
+using Olympiad.Materials.Application;
+using Olympiad.Materials.Domain;
 
-namespace Sapientum.Materials.Infrastructure.Security;
+namespace Olympiad.Materials.Infrastructure.Security;
 
 /// <summary>Versioned authenticated identity. Verification additionally requires an exact registry match.</summary>
 public sealed class HmacBlankTokenProtector : IBlankTokenProtector

@@ -1,7 +1,7 @@
 using Microsoft.Data.Sqlite;
-using Sapientum.Materials.Application;
+using Olympiad.Materials.Application;
 
-namespace Sapientum.Materials.Infrastructure.Persistence;
+namespace Olympiad.Materials.Infrastructure.Persistence;
 
 public sealed class SqliteDatabase
 {

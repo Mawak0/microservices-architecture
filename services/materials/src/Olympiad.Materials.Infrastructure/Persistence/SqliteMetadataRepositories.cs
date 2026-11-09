@@ -1,8 +1,8 @@
 using Microsoft.Data.Sqlite;
-using Sapientum.Materials.Application;
+using Olympiad.Materials.Application;
 using System.Text.Json;
 
-namespace Sapientum.Materials.Infrastructure.Persistence;
+namespace Olympiad.Materials.Infrastructure.Persistence;
 
 internal sealed class SqliteIdempotencyRepository(SqliteConnection connection, SqliteTransaction transaction)
     : SqliteRepository(connection, transaction), IIdempotencyRepository

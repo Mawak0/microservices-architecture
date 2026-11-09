@@ -1,8 +1,8 @@
-using Sapientum.Materials.Application;
-using Sapientum.Materials.Domain;
+using Olympiad.Materials.Application;
+using Olympiad.Materials.Domain;
 using System.Text.Json;
 
-namespace Sapientum.Materials.Infrastructure.Http;
+namespace Olympiad.Materials.Infrastructure.Http;
 
 public sealed class HttpIdentityGateway(DependencyClient client) : IIdentityGateway
 {

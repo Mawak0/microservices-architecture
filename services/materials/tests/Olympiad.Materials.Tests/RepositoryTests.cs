@@ -1,11 +1,11 @@
-using Sapientum.Materials.Application;
-using Sapientum.Materials.Domain;
-using Sapientum.Materials.Infrastructure.Persistence;
-using Sapientum.Materials.Infrastructure.Security;
+using Olympiad.Materials.Application;
+using Olympiad.Materials.Domain;
+using Olympiad.Materials.Infrastructure.Persistence;
+using Olympiad.Materials.Infrastructure.Security;
 using Microsoft.Data.Sqlite;
 using Xunit;
 
-namespace Sapientum.Materials.Tests;
+namespace Olympiad.Materials.Tests;
 
 internal sealed class RepositoryFixture : IAsyncDisposable
 {

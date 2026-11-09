@@ -1,7 +1,7 @@
-using Sapientum.Materials.Application;
-using Sapientum.Materials.Domain;
+using Olympiad.Materials.Application;
+using Olympiad.Materials.Domain;
 
-namespace Sapientum.Materials.Tests;
+namespace Olympiad.Materials.Tests;
 
 internal static class Sample
 {

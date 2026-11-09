@@ -1,8 +1,8 @@
 using Microsoft.Data.Sqlite;
-using Sapientum.Materials.Application;
-using Sapientum.Materials.Domain;
+using Olympiad.Materials.Application;
+using Olympiad.Materials.Domain;
 
-namespace Sapientum.Materials.Infrastructure.Persistence;
+namespace Olympiad.Materials.Infrastructure.Persistence;
 
 internal sealed class SqliteKitRepository(SqliteConnection connection, SqliteTransaction transaction)
     : SqliteRepository(connection, transaction), IKitRepository
