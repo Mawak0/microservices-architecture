@@ -1,6 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
-  <ItemGroup>
-    <ProjectReference Include="../Sapientum.Intake.Application/Sapientum.Intake.Application.csproj" />
-    <ProjectReference Include="../Sapientum.Intake.Infrastructure/Sapientum.Intake.Infrastructure.csproj" />
-  </ItemGroup>
-</Project>

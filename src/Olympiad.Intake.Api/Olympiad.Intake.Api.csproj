@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <ItemGroup>
+    <ProjectReference Include="../Olympiad.Intake.Application/Olympiad.Intake.Application.csproj" />
+    <ProjectReference Include="../Olympiad.Intake.Infrastructure/Olympiad.Intake.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>

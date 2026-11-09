@@ -33,9 +33,9 @@ async function ready(child, base) {
   }
   throw new Error(`Startup timeout: ${child.output}`);
 }
-const directory = await mkdtemp(join(tmpdir(), 'sapientum-intake-'));
+const directory = await mkdtemp(join(tmpdir(), 'olympiad-intake-'));
 try {
-  await run('dotnet', ['build', 'Sapientum.Intake.sln', '--nologo']);
+  await run('dotnet', ['build', 'Olympiad.Intake.sln', '--nologo']);
   const fixturePort = await freePort(), servicePort = await freePort();
   const fixtureBase = `http://127.0.0.1:${fixturePort}`, serviceBase = `http://127.0.0.1:${servicePort}`;
   const fixture = start(process.execPath, ['test-support/fixtures.mjs'], { ...process.env, FIXTURE_PORT: String(fixturePort) });
@@ -48,7 +48,7 @@ try {
   };
   let service;
   const launchService = async () => {
-    service = start('dotnet', ['src/Sapientum.Intake.Api/bin/Debug/net8.0/Sapientum.Intake.Api.dll'], serviceEnvironment);
+    service = start('dotnet', ['src/Olympiad.Intake.Api/bin/Debug/net8.0/Olympiad.Intake.Api.dll'], serviceEnvironment);
     await ready(service, serviceBase);
   };
   await launchService();

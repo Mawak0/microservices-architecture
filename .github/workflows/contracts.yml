@@ -29,18 +29,18 @@ jobs:
       - run: npm exec --yes --package=@redocly/cli@2.62.1 -- redocly lint contracts/openapi.json --extends minimal
 
       - name: Build all service assemblies
-        run: dotnet build Sapientum.Intake.sln --configuration Release --nologo
+        run: dotnet build Olympiad.Intake.sln --configuration Release --nologo
 
       - name: Test .NET solution and collect coverage
         id: tests
         run: >-
-          dotnet test Sapientum.Intake.sln --configuration Release --no-build --nologo
+          dotnet test Olympiad.Intake.sln --configuration Release --no-build --nologo
           --collect:"XPlat Code Coverage"
           --results-directory TestResults
           --logger "trx;LogFileName=tests.trx"
           -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura
-          'DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Include=[Sapientum.Intake.*]*'
-          DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.IncludeDirectory="$GITHUB_WORKSPACE/src/Sapientum.Intake.Api/bin/Release/net8.0/"
+          'DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Include=[Olympiad.Intake.*]*'
+          DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.IncludeDirectory="$GITHUB_WORKSPACE/src/Olympiad.Intake.Api/bin/Release/net8.0/"
 
       - name: Run service acceptance tests
         run: npm run test:service
@@ -70,8 +70,8 @@ jobs:
           covered = sum(sum(lines.values()) for lines in modules.values())
           if not total:
               raise SystemExit('Coverage report contains no executable .NET lines.')
-          expected = {'Sapientum.Intake.Domain', 'Sapientum.Intake.Application',
-                      'Sapientum.Intake.Infrastructure', 'Sapientum.Intake.Api'}
+          expected = {'Olympiad.Intake.Domain', 'Olympiad.Intake.Application',
+                      'Olympiad.Intake.Infrastructure', 'Olympiad.Intake.Api'}
           missing = expected - modules.keys()
           if missing:
               raise SystemExit(f'Coverage is missing service assemblies: {sorted(missing)}')
