@@ -8,7 +8,8 @@ public sealed class SqliteDatabase
     private readonly string connectionString;
     public SqliteDatabase(string connectionString)
     {
-        var builder = new SqliteConnectionStringBuilder(connectionString) { DefaultTimeout = 30, Pooling = true, ForeignKeys = true };
+        var configuredPooling = new SqliteConnectionStringBuilder(connectionString).Pooling;
+        var builder = new SqliteConnectionStringBuilder(connectionString) { DefaultTimeout = 30, Pooling = configuredPooling, ForeignKeys = true };
         if (builder.DataSource != ":memory:")
         {
             var directory = Path.GetDirectoryName(Path.GetFullPath(builder.DataSource));
