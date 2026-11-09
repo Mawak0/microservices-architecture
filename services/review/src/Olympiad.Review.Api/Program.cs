@@ -63,3 +63,6 @@ app.UseMiddleware<RequestMiddleware>();
 app.MapGet("/health", () => Results.Json(new { service = "review", healthy = true }));
 CheckEndpoints.Map(app); AppealEndpoints.Map(app); CompletionEndpoints.Map(app);
 app.Run();
+
+// Allows integration tests to exercise the real composition in the test process.
+public partial class Program { }
