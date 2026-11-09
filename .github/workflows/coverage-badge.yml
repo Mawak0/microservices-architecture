@@ -1,0 +1,129 @@
+name: Update coverage badge
+
+on:
+  workflow_run:
+    workflows: ['Intake implementation and contracts']
+    types: [completed]
+    branches: ['contracts/intake-service']
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/coverage-badge.yml']
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: coverage-badge-main
+  cancel-in-progress: false
+
+jobs:
+  badge:
+    if: github.event_name != 'workflow_run' || (github.event.workflow_run.event == 'push' && github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Generate badge from the latest CI report
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: python
+        run: |
+          import json
+          import os
+          import re
+          import subprocess
+          import tempfile
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+
+          repo = os.environ['GH_REPO']
+          branch = 'contracts/intake-service'
+          def api(path):
+              return json.loads(subprocess.check_output(['gh', 'api', path], text=True))
+
+          # Read only completed push runs from this repository, never PR artifacts.
+          data = api(f'repos/{repo}/actions/workflows/contracts.yml/runs?branch=contracts%2Fintake-service&event=push&status=completed&per_page=1')
+          runs = data['workflow_runs']
+          if not runs:
+              raise SystemExit('No completed intake CI run found.')
+          run = runs[0]
+          if run['head_repository']['full_name'] != repo or run['head_branch'] != branch:
+              raise SystemExit('Unexpected source repository or branch.')
+          sha = run['head_sha']
+          if not re.fullmatch(r'[0-9a-f]{40}', sha):
+              raise SystemExit('Invalid source commit.')
+          run_id = int(run['id'])
+          run_url = f'https://github.com/{repo}/actions/runs/{run_id}'
+          with tempfile.TemporaryDirectory() as temp:
+              subprocess.run(['gh', 'run', 'download', str(run_id), '--repo', repo,
+                              '--name', 'coverage-and-test-results', '--dir', temp], check=True)
+              reports = list(Path(temp).rglob('coverage.cobertura.xml'))
+              if not reports:
+                  raise SystemExit('The latest CI run has no Cobertura report; keeping the previous badge.')
+              modules = {}
+              for report in reports:
+                  for package in ET.parse(report).getroot().findall('./packages/package'):
+                      name = package.attrib['name']
+                      if not re.fullmatch(r'(Olympiad|Sapientum)\.Intake\.(Api|Application|Domain|Infrastructure)', name):
+                          continue
+                      lines = modules.setdefault(name, {})
+                      for cls in package.findall('./classes/class'):
+                          for line in cls.findall('./lines/line'):
+                              key = (cls.attrib['filename'], int(line.attrib['number']))
+                              lines[key] = lines.get(key, False) or int(line.attrib['hits']) > 0
+          if {name.rsplit('.', 1)[-1] for name in modules} != {'Api', 'Application', 'Domain', 'Infrastructure'}:
+              raise SystemExit('The coverage report must include all four intake layers.')
+          total = sum(len(lines) for lines in modules.values())
+          covered = sum(sum(lines.values()) for lines in modules.values())
+          if total == 0:
+              raise SystemExit('Coverage report contains no executable lines.')
+          percent = 100 * covered / total
+          value = f'{percent:.2f}%'
+          color = '#4c1' if percent >= 90 else '#dfb317' if percent >= 70 else '#e05d44'
+          svg = (
+              '<svg xmlns="http://www.w3.org/2000/svg" width="186" height="20" role="img" '
+              f'aria-label="intake coverage: {value}">'
+              f'<title>intake coverage: {value}</title>'
+              '<rect width="186" height="20" rx="3" fill="#555"/>'
+              f'<path fill="{color}" d="M116 0h67q3 0 3 3v14q0 3-3 3h-67z"/>'
+              '<g fill="#fff" text-anchor="middle" font-family="Verdana,DejaVu Sans,sans-serif" font-size="11">'
+              '<text x="58" y="14">intake coverage</text>'
+              f'<text x="151" y="14">{value}</text></g></svg>\n'
+          )
+          target = Path('.github/badges/intake-coverage.svg')
+          target.parent.mkdir(parents=True, exist_ok=True)
+          target.write_text(svg, encoding='utf-8')
+          block = (
+              '<!-- intake-coverage:start -->\n'
+              f'[![Покрытие сервиса приёма: {value}](.github/badges/intake-coverage.svg)]({run_url})\n\n'
+              f'**Приём бланков — покрытие .NET-кода: {value}** ({covered}/{total} исполняемых строк).\n'
+              f'Все четыре слоя, включая API; ветка \x60{branch}\x60, коммит \x60{sha[:7]}\x60. '
+              f'[Отчёт CI]({run_url}). Это показатель сервиса приёма, а не всех трёх сервисов.\n'
+              '<!-- intake-coverage:end -->'
+          )
+          readme = Path('README.md')
+          text = readme.read_text(encoding='utf-8')
+          pattern = r'<!-- intake-coverage:start -->.*?<!-- intake-coverage:end -->'
+          if re.search(pattern, text, re.S):
+              text = re.sub(pattern, lambda match: block, text, flags=re.S)
+          else:
+              heading, separator, rest = text.partition('\n')
+              text = heading + '\n\n' + block + '\n' + separator + rest
+          readme.write_text(text, encoding='utf-8')
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as out:
+              out.write(f'Intake line coverage: **{value}** ({covered}/{total}). [Source run]({run_url})\n')
+      - name: Commit updated coverage badge
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- README.md .github/badges/intake-coverage.svg
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "docs: update intake coverage badge [skip ci]"
+          git push origin HEAD:main
