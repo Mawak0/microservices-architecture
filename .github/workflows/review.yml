@@ -23,5 +23,5 @@ jobs:
       - run: node --check tests/acceptance.test.mjs
       - run: node validation/audit-architecture.mjs .
       - run: npm exec --yes --package=@redocly/cli@2.62.1 -- redocly lint contracts/openapi.json --extends minimal
-      - run: dotnet test Sapientum.Review.sln --configuration Release
+      - run: dotnet test Olympiad.Review.sln --configuration Release
       - run: npm run test:service
