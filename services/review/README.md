@@ -1,4 +1,4 @@
-# Sapientum — сервис проверки и апелляций
+# Олимпиадная платформа — сервис проверки и апелляций
 
 Реализация на C# 12 / .NET 8 / ASP.NET Core и SQLite. Контракт 0.3 и все
 46 исходных приёмочных сценариев сохранены. Сервис назначает ответы проверяющим,
@@ -12,7 +12,7 @@
 ```sh
 npm ci
 npm test
-dotnet test Sapientum.Review.sln
+dotnet test Olympiad.Review.sln
 npm run test:service
 ```
 
@@ -31,7 +31,7 @@ npm run test:service
 $env:ASPNETCORE_URLS = 'http://127.0.0.1:8083'
 $env:Dependencies__BaseUrl = 'http://127.0.0.1:19100'
 $env:Dependencies__AccessToken = 'test-system'
-dotnet run --project src/Sapientum.Review.Api
+dotnet run --project src/Olympiad.Review.Api
 ```
 
 Этот пример использует тестовый провайдер идентификации. В рабочем окружении
@@ -60,11 +60,11 @@ dotnet run --project src/Sapientum.Review.Api
 
 ## Структура и документы
 
-- `src/Sapientum.Review.Domain` — агрегаты и инварианты без фреймворков.
-- `src/Sapientum.Review.Application` — сценарии, небольшие порты и транзакционные границы.
-- `src/Sapientum.Review.Infrastructure` — SQLite, HTTP-адаптеры, outbox.
-- `src/Sapientum.Review.Api` — HTTP, авторизация, композиция и фоновые координаторы.
-- `tests/Sapientum.Review.Tests` — домен, подстановка портов, SQL, восстановление и архитектура.
+- `src/Olympiad.Review.Domain` — агрегаты и инварианты без фреймворков.
+- `src/Olympiad.Review.Application` — сценарии, небольшие порты и транзакционные границы.
+- `src/Olympiad.Review.Infrastructure` — SQLite, HTTP-адаптеры, outbox.
+- `src/Olympiad.Review.Api` — HTTP, авторизация, композиция и фоновые координаторы.
+- `tests/Olympiad.Review.Tests` — домен, подстановка портов, SQL, восстановление и архитектура.
 - `ARCHITECTURE.md` — зависимости, SOLID и гарантии.
 - `SERVICE.md`, `CONTRACTS.md`, `contracts/` — бизнес-требования и сообщения.
 - `test-support/README.md` — контракт внешнего испытательного стенда.

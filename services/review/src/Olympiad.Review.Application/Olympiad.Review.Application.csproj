@@ -1,0 +1,1 @@
+<Project Sdk="Microsoft.NET.Sdk"><ItemGroup><ProjectReference Include="../Olympiad.Review.Domain/Olympiad.Review.Domain.csproj" /></ItemGroup></Project>
