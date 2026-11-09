@@ -1,4 +1,4 @@
-namespace Sapientum.Intake.Domain;
+namespace Olympiad.Intake.Domain;
 
 public enum IntakeError
 {

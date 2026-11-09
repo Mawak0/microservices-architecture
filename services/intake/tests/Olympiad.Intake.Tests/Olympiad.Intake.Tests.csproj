@@ -2,8 +2,8 @@
   <PropertyGroup><IsTestProject>true</IsTestProject><IsPackable>false</IsPackable></PropertyGroup>
   <ItemGroup>
     
-    <ProjectReference Include="../../src/Sapientum.Intake.Domain/Sapientum.Intake.Domain.csproj" />
-    <ProjectReference Include="../../src/Sapientum.Intake.Application/Sapientum.Intake.Application.csproj" />
+    <ProjectReference Include="../../src/Olympiad.Intake.Domain/Olympiad.Intake.Domain.csproj" />
+    <ProjectReference Include="../../src/Olympiad.Intake.Application/Olympiad.Intake.Application.csproj" />
     
     <PackageReference Include="coverlet.collector" Version="6.0.4"><PrivateAssets>all</PrivateAssets></PackageReference>
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.31" />

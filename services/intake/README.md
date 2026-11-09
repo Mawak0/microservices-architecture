@@ -1,4 +1,4 @@
-# Sapientum: сервис приёма бланков
+# Олимпиадная платформа: сервис приёма бланков
 
 Реализованный backend на C# 12 / .NET 8 / ASP.NET Core и SQLite.
 Контракт 0.3 и исходные 30 приёмочных сценариев сохранены. Domain, Application,
@@ -14,9 +14,9 @@ Infrastructure и Api — отдельные проекты с проверяе�
 ```sh
 npm ci
 npm test
-dotnet test Sapientum.Intake.sln
+dotnet test Olympiad.Intake.sln
 npm run test:service
-dotnet build Sapientum.Intake.sln --configuration Release
+dotnet build Olympiad.Intake.sln --configuration Release
 ```
 
 npm test проверяет схемы и тестовый стенд. dotnet test проверяет агрегаты,
@@ -35,7 +35,7 @@ npm run test:service собирает настоящий API, запускает
 $env:Dependencies__BaseUrl = 'http://127.0.0.1:19100'
 $env:Dependencies__AccessToken = 'test-system' # только локальный стенд
 $env:ASPNETCORE_URLS = 'http://127.0.0.1:8082'
-dotnet run --project src/Sapientum.Intake.Api
+dotnet run --project src/Olympiad.Intake.Api
 ```
 
 По умолчанию используется .data/intake.db. GET /health не требует credentials.
@@ -73,7 +73,7 @@ dotnet run --project src/Sapientum.Intake.Api
 - CONTRACTS.md — согласованные решения.
 - contracts/openapi.json — OpenAPI 3.1, contracts/events.schema.json — события.
 - contracts/requirements.md — трассировка исходных сценариев.
-- contracts/ui-requirements.md — отдельные требования будущего интерфейса камеры.
+- contracts/ui-requirements.md — требования к интерфейсу камеры.
 - test-support/README.md — протокол внешних зависимостей для локального стенда.
 - IMPLEMENTATION.md — единый стандарт трёх реализаций.
 
