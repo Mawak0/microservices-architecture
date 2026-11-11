@@ -18,9 +18,57 @@ using ZXing.QrCode;
 
 namespace Olympiad.Intake.Tests;
 
-/// <summary>Exercises the real HTTP pipeline, use cases, QR reader and SQLite in one instrumented process.</summary>
+/// <summary>Exercises the real HTTP pipeline, use cases, QR reader and PostgreSQL in one instrumented process.</summary>
 public sealed class ApiTests
 {
+    [Fact]
+    public async Task ProductionCompositionStoresPrivateImageAndWaitsForMatchingCheckingAcknowledgement()
+    {
+        await using var app = new ApiFixture(workflows:true,production:true); using var client=app.CreateClient();
+        using var opened=await Olympiad.Testing.DurableHttp.Settled(()=>app.Send(client,HttpMethod.Put,"/intake-sessions/game",new {admissionVersion=1},key:"open-production"));
+        Assert.Equal(HttpStatusCode.OK,opened.StatusCode);
+        var body=app.Blank();
+        using var accepted=await Olympiad.Testing.DurableHttp.Settled(()=>app.Send(client,HttpMethod.Post,"/receipts",body,"observer","production-image"));
+        Assert.Contains(accepted.StatusCode,new[] {HttpStatusCode.Created,HttpStatusCode.OK});
+        var answer=await accepted.Content.ReadFromJsonAsync<JsonElement>();
+        var id=answer.GetProperty("id").GetString();
+        using var image=await app.Send(client,HttpMethod.Get,$"/receipts/{id}/image",token:"checker");
+        Assert.Equal(HttpStatusCode.OK,image.StatusCode);
+        Assert.Equal("image/png",image.Content.Headers.ContentType!.MediaType);
+        var processes=app.Services.GetRequiredService<Olympiad.Workflows.Application.IProcessStore>();
+        var operation=accepted.Headers.GetValues("Operation-Id").Single();
+        var deadline=DateTimeOffset.UtcNow.AddSeconds(15);
+        while((await processes.FindAsync(operation,"observer",default))!.Status!=Olympiad.Workflows.Domain.ProcessStatus.Completed && DateTimeOffset.UtcNow<deadline) await Task.Delay(50);
+        Assert.Null((await processes.FindAsync(operation,"observer",default))!.Invocation);
+        var policy=app.Services.GetRequiredService<Olympiad.Workflows.Infrastructure.HttpWorkflowOptions>();
+        Assert.InRange(policy.ClassifyError(new IntakeException(IntakeError.ValidationError,"Invalid")).Status,400,499);
+        foreach(var failure in new Exception[] {new JsonException(),new BadHttpRequestException("Invalid")})
+            Assert.Equal(422,policy.ClassifyError(failure).Status);
+        foreach(var failure in new Exception[] {new OperationCanceledException(),new IOException()})
+            Assert.InRange(policy.ClassifyError(failure).Status,500,599);
+    }
+    [Fact]
+    public async Task DurableHttpSubmissionWaitsForCheckingCheckpointAndKeepsItsIdentity()
+    {
+        await using var app = new ApiFixture(workflows: true); using var client = app.CreateClient();
+        using var opened = await app.Send(client, HttpMethod.Put, "/intake-sessions/game", new { admissionVersion = 1 });
+        Assert.Equal(HttpStatusCode.OK, opened.StatusCode);
+        var body = app.Blank();
+        using var accepted = await Olympiad.Testing.DurableHttp.Settled(() => app.Send(client, HttpMethod.Post, "/receipts", body, "observer", "saved-answer"));
+        Assert.Contains(accepted.StatusCode, new[] {HttpStatusCode.Created,HttpStatusCode.OK});
+        var answer = await accepted.Content.ReadFromJsonAsync<JsonElement>();
+        var operation = accepted.Headers.GetValues("Operation-Id").Single();
+        Assert.Equal("AwaitingCheckpoint", accepted.Headers.GetValues("Operation-Status").Single());
+        var processes = app.Services.GetRequiredService<Olympiad.Workflows.Application.IProcessStore>();
+        Assert.NotNull((await processes.FindAsync(operation, "observer", default))!.Invocation);
+        await processes.ConfirmAsync("ReviewRegistered", answer.GetProperty("id").GetString()!, default);
+        Assert.Null((await processes.FindAsync(operation, "observer", default))!.Invocation);
+        using var replay = await app.Send(client, HttpMethod.Post, "/receipts", body, "observer", "saved-answer");
+        Assert.Equal(HttpStatusCode.OK, replay.StatusCode);
+        Assert.Equal(answer.ToString(), (await replay.Content.ReadFromJsonAsync<JsonElement>()).ToString());
+        using var status = await app.Send(client, HttpMethod.Get, "/operations/" + operation, token: "observer");
+        Assert.Equal("Completed", (await status.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("status").GetString());
+    }
     [Fact]
     public async Task BackgroundDeliveryRecoversFromTransportFailureWithoutLosingAcceptedAnswer()
     {
@@ -217,19 +265,28 @@ public sealed class ApiTests
         private bool stopped;
         public PostgresDatabase Database { get; }
         public Dependencies Backend { get; } = new();
-        public ApiFixture()
+        public IServiceProvider Services => factory.Services;
+        public ApiFixture(bool workflows = false, bool production = false)
         {
             Directory.CreateDirectory(directory);
             Database = new PostgresDatabase(TestDatabase.For(Path.Combine(directory, "intake.db")));
             factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
             {
-                builder.UseEnvironment("Testing");
+                builder.UseEnvironment(production?"Production":"Testing");
+                builder.UseSetting("Workflows:Enabled", workflows.ToString());
+                if(production)
+                {
+                    builder.UseSetting("S3:Endpoint",Environment.GetEnvironmentVariable("TEST_S3_ENDPOINT"));
+                    builder.UseSetting("S3:Region","us-east-1");
+                    builder.UseSetting("S3:AccessKey",Environment.GetEnvironmentVariable("TEST_S3_ACCESS_KEY"));
+                    builder.UseSetting("S3:SecretKey",Environment.GetEnvironmentVariable("TEST_S3_SECRET_KEY"));
+                }
                 builder.UseSetting("Storage:ConnectionString", TestDatabase.For(Path.Combine(directory, "intake.db")));
                 builder.ConfigureServices(services =>
                 {
                     services.RemoveAll<PostgresDatabase>();
                     services.AddSingleton(Database);
-                    foreach (var name in new[] { "Games", "Teams", "Materials", "Identity", "Images", "Events" })
+                    foreach (var name in new[] { "Games", "Teams", "Materials", "Identity", "Images", "Events", "Review" })
                         services.AddKeyedSingleton<HttpClient>(name, (_, _) => new HttpClient(Backend, disposeHandler: false) { BaseAddress = new Uri("https://dependencies.example/") });
                     services.AddSingleton<IIdentityProvider>(provider => new FaultInjectingIdentity(
                         new HttpIdentityProvider(provider.GetRequiredKeyedService<HttpClient>("Identity")), Backend));
@@ -281,6 +338,14 @@ public sealed class ApiTests
         {
             var path = request.RequestUri!.AbsolutePath;
             var body = request.Content is null ? default : await request.Content.ReadFromJsonAsync<JsonElement>(ct);
+            if(path=="/integrations/receipts")
+            {
+                var data=body.GetProperty("data");
+                var reply=new HttpResponseMessage(HttpStatusCode.Created) {Content=JsonContent.Create(new {id="check",receiptId=data.GetProperty("receiptId").GetString(),blankId=data.GetProperty("blankId").GetString(),taskId=data.GetProperty("taskId").GetString(),gameId=data.GetProperty("gameId").GetString()})};
+                reply.Headers.Add("Operation-Id",body.GetProperty("operationId").GetString());
+                reply.Headers.Add("Process-Version","1"); reply.Headers.Add("Checkpoint","ReviewRegistered");
+                return reply;
+            }
             if (path == "/events")
             {
                 // Capture the failure before waking the test that restores the transport.

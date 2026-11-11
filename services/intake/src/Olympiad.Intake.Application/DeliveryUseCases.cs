@@ -5,6 +5,19 @@ namespace Olympiad.Intake.Application;
 public sealed class SubmissionFinalizer(IIntakeUnitOfWork store, IImageStorage images,
     IAdmissionGateway games, ITeamAdmissionGateway teams, IClock clock)
 {
+    public async Task<(Receipt? Accepted,bool Compensate)> AbandonAsync(PendingSubmission pending,CancellationToken ct)
+    {
+        var now=await clock.NowAsync(ct);
+        return await store.ExecuteAsync<(Receipt?,bool)>(async (tx,token) =>
+        {
+            var accepted=await tx.Receipts.FindAsync(pending.ReceiptId,token);
+            if(accepted is not null) return (accepted,false);
+            if(!await tx.Submissions.IsOwnedAsync(pending.ReceiptId,pending.WorkerToken,token)) return (null,false);
+            await tx.Outbox.AddAsync(new UploadAbandoned(Guid.NewGuid().ToString(),now,pending.ReceiptId),token);
+            await tx.Submissions.RemoveAsync(pending.ReceiptId,pending.WorkerToken,token);
+            return (null,true);
+        },ct);
+    }
     public async Task<Receipt> ExecuteAsync(PendingSubmission pending, CancellationToken ct)
     {
         var imageRef = await images.SaveAsync(pending.ReceiptId, pending.Blank.BlankId, pending.Image, pending.MediaType, ct);
@@ -24,7 +37,8 @@ public sealed class SubmissionFinalizer(IIntakeUnitOfWork store, IImageStorage i
             session.Synchronize(admission, admission.Version, now);
             await tx.Sessions.SaveAsync(session, token);
             await tx.Receipts.AddAsync(receipt, pending.Image, pending.MediaType, token);
-            await tx.Outbox.AddAsync(ReceiptAccepted.From(receipt, Guid.NewGuid().ToString()), token);
+            await tx.Outbox.AddAsync(ReceiptAccepted.From(receipt, Guid.NewGuid().ToString()) with
+                {OperationId=pending.Operation.WorkflowId,ProcessVersion=pending.Operation.WorkflowVersion}, token);
             await tx.Operations.SaveAsync(pending.Operation, new(ReceiptId: receipt.Id), token);
             await tx.Submissions.RemoveAsync(pending.ReceiptId, pending.WorkerToken, token);
             return receipt;
@@ -43,7 +57,7 @@ public sealed class RecoverPendingSubmission(IIntakeUnitOfWork store, Submission
         try { await finalizer.ExecuteAsync(pending, ct); }
         catch (IntakeException exception) when (exception.Error is IntakeError.IntakeClosed or IntakeError.TeamNotAdmitted)
         {
-            await store.ExecuteAsync(async (tx, token) => { await tx.Submissions.RemoveAsync(pending.ReceiptId, pending.WorkerToken, token); return true; }, ct);
+            await finalizer.AbandonAsync(pending,ct);
         }
         return true;
     }

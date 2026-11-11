@@ -1,4 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
-  <ItemGroup><ProjectReference Include="../Olympiad.Materials.Infrastructure/Olympiad.Materials.Infrastructure.csproj" /></ItemGroup>
+  <ItemGroup><ProjectReference Include="../Olympiad.Materials.Infrastructure/Olympiad.Materials.Infrastructure.csproj" /><ProjectReference Include="..\..\..\..\building-blocks\Olympiad.Workflows.Infrastructure\Olympiad.Workflows.Infrastructure.csproj" /></ItemGroup>
   <ItemGroup><Content Include="../../templates/**/*.json" Link="templates/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" /></ItemGroup>
 </Project>

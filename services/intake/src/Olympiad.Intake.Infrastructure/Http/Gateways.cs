@@ -75,10 +75,12 @@ public sealed class HttpImageStorage(HttpClient client) : IImageStorage, IImageR
     private sealed record ImageDocument(string ImageRef);
 }
 
-public sealed class HttpEventPublisher(HttpClient client) : IEventPublisher
+public sealed class HttpEventPublisher(HttpClient client, Olympiad.Storage.S3.S3Objects? images = null) : IEventPublisher
 {
     private readonly DependencyHttp http = new(client);
-    public Task PublishAsync(IntakeEvent message, CancellationToken ct) => http.PublishAsync(Persistence.EventSerialization.Serialize(message), message.EventId, ct);
+    public Task PublishAsync(IntakeEvent message, CancellationToken ct) => message is UploadAbandoned abandoned
+        ? images?.DeleteOwnerAsync(abandoned.AggregateId,ct) ?? Task.CompletedTask
+        : http.PublishAsync(Persistence.EventSerialization.Serialize(message), message.EventId, ct);
 }
 
 public sealed class SystemClock : IClock

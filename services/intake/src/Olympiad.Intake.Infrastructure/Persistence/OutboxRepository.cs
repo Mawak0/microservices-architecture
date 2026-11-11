@@ -43,6 +43,7 @@ public static class EventSerialization
         {
             nameof(ReceiptAccepted) => JsonSerializer.Deserialize<ReceiptAccepted>(json, Options)!,
             nameof(IntakeClosed) => JsonSerializer.Deserialize<IntakeClosed>(json, Options)!,
+            nameof(UploadAbandoned) => JsonSerializer.Deserialize<UploadAbandoned>(json, Options)!,
             _ => throw new InvalidOperationException("Unsupported persisted event type.")
         };
     }

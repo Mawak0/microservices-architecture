@@ -71,6 +71,8 @@ internal sealed record LimitRequest
 }
 internal sealed record Incoming<T>
 {
+    public string? OperationId { get; init; }
+    public int ProcessVersion { get; init; } = 1;
     public required string EventId { get; init; }
     public required string Type { get; init; }
     public required DateTimeOffset OccurredAt { get; init; }

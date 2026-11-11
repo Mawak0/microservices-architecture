@@ -135,7 +135,7 @@ async function startService(name) {
   const dll = path.join(roots[name], 'src', `Olympiad.${label}.Api`, 'bin', 'Debug', 'net8.0', `Olympiad.${label}.Api.dll`);
   const child = spawn('dotnet', [dll], {
     cwd: roots[name], windowsHide: true,
-    env: { ...process.env, ASPNETCORE_URLS: urls[name], ASPNETCORE_ENVIRONMENT: 'ContractTests', DOTNET_ENVIRONMENT: 'ContractTests',
+    env: { ...process.env, ASPNETCORE_URLS: urls[name], ASPNETCORE_ENVIRONMENT: 'ContractTests', Workflows__Enabled: 'false', DOTNET_ENVIRONMENT: 'ContractTests',
       Dependencies__BaseUrl: bridgeUrl, Dependencies__ClockBaseUrl: fixtureUrl, Dependencies__AccessToken: 'test-system',
       Storage__ConnectionString: await postgresConnection(path.join(temp, name)), Runtime__LeaseSeconds: '60' },
     stdio: ['ignore', 'pipe', 'pipe']

@@ -10,8 +10,16 @@ internal static class CheckEndpoints
             var e = await Transport.Body<Incoming<ReceiptData>>(c);
             if (e.Type != "ReceiptAccepted" || e.AggregateId != e.Data.ReceiptId)
                 throw new DomainFailure("VALIDATION_ERROR", FailureKind.Validation);
-            return Transport.Reply(await handler.Execute(await Transport.Identity(c),
-                Required.Text(e.EventId), e.Data.Receipt(), c.RequestAborted));
+            if(e.ProcessVersion!=1) throw new DomainFailure("PROCESS_VERSION_UNSUPPORTED",FailureKind.Validation);
+            var committed=await handler.Execute(await Transport.Identity(c),
+                Required.Text(e.EventId), e.Data.Receipt(), c.RequestAborted);
+            if(e.OperationId is { } operation)
+            {
+                c.Response.Headers["Operation-Id"]=operation;
+                c.Response.Headers["Process-Version"]=e.ProcessVersion.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                c.Response.Headers["Checkpoint"]="ReviewRegistered";
+            }
+            return Transport.Reply(committed);
         }).WithMetadata(new Roles("integration"));
         app.MapGet("/checks", async (HttpContext c, CheckQueries queries) =>
             Results.Json(new { items = await queries.List(Transport.GameQuery(c), c.RequestAborted) }))

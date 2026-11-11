@@ -65,9 +65,11 @@ public sealed class AcceptBlank(IIntakeUnitOfWork store, IBlankRegistry registry
         try { return new(await finalizer.ExecuteAsync(pending, ct), false); }
         catch (IntakeException exception) when (exception.Error is IntakeError.StorageUnavailable or IntakeError.IntakeClosed or IntakeError.TeamNotAdmitted)
         {
-            // Definitive rejection or failed storage frees the blank. Cancellation and transient failures retain recovery bytes.
-            await store.ExecuteAsync(async (tx, token) => { await tx.Submissions.RemoveAsync(pending.ReceiptId, pending.WorkerToken, token); return true; }, CancellationToken.None);
-            throw;
+            // A late worker cannot compensate an upload whose receipt was already accepted or reassigned.
+            var rejected=await finalizer.AbandonAsync(pending,CancellationToken.None);
+            if(rejected.Accepted is not null) return new(rejected.Accepted,true);
+            if(rejected.Compensate) throw new IntakeException(exception.Error,exception.Message) {CompensationResourceId=pending.ReceiptId};
+            throw new IntakeException(IntakeError.IntakeBusy,"Another worker owns this submission; retry with the same key.");
         }
     }
 

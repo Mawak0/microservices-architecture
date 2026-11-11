@@ -1,9 +1,12 @@
 using System.Diagnostics;
 using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
 using System.Net.Sockets;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace Olympiad.Materials.Tests;
@@ -29,6 +32,7 @@ public sealed class HttpAcceptanceTests
             await WaitForFixtures(probe, fixtureUrl, fixtures);
             using var environment = new EnvironmentScope(new()
             {
+                ["Workflows__Enabled"] = "false",
                 ["Dependencies__BaseUrl"] = fixtureUrl,
                 ["Dependencies__ClockBaseUrl"] = fixtureUrl,
                 ["Dependencies__AccessToken"] = "test-system",
@@ -56,6 +60,7 @@ public sealed class HttpAcceptanceTests
             try { await tests.WaitForExitAsync(timeout.Token); }
             finally { if (!tests.HasExited) tests.Kill(entireProcessTree: true); }
             Assert.True(tests.ExitCode == 0, await stdout + "\n" + await stderr);
+            await VerifyDurableCommands(root, fixtureUrl);
 
         }
         finally
@@ -84,6 +89,39 @@ public sealed class HttpAcceptanceTests
         {
             foreach (var pair in previous) Environment.SetEnvironmentVariable(pair.Key, pair.Value);
         }
+    }
+    private static async Task VerifyDurableCommands(string root, string fixtureUrl)
+    {
+        using var fixture = new HttpClient();
+        using var created = await fixture.PostAsJsonAsync(fixtureUrl + "/__test/scenarios", new { });
+        var scenario = await created.Content.ReadFromJsonAsync<JsonElement>();
+        var game = scenario.GetProperty("game").GetProperty("id").GetString();
+        var team = scenario.GetProperty("teamId").GetString();
+        var task = scenario.GetProperty("taskIds")[0].GetString();
+        await using var application = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+            builder.UseContentRoot(root).UseEnvironment("ContractTests").UseSetting("Workflows:Enabled", "true"));
+        using var client = application.CreateClient(); client.DefaultRequestHeaders.Authorization = new("Bearer", "test-admin");
+        client.DefaultRequestHeaders.Add("Idempotency-Key", Guid.NewGuid().ToString());
+        using var kit = await Olympiad.Testing.DurableHttp.Settled(() => client.PostAsJsonAsync("/kits", new { gameId = game, teamId = team }));
+        Assert.Contains(kit.StatusCode,new[] {HttpStatusCode.Created,HttpStatusCode.OK});
+        Assert.Equal("Completed", kit.Headers.GetValues("Operation-Status").Single());
+        using var print = await client.PostAsJsonAsync("/print-jobs", new { gameId = game, teamId = team, blankIds = Array.Empty<string>(), taskIds = new[] { task } });
+        Assert.Equal(HttpStatusCode.Accepted, print.StatusCode);
+        var operation = print.Headers.GetValues("Operation-Location").Single();
+        var deadline = DateTimeOffset.UtcNow.AddSeconds(15); string? status;
+        do { using var read = await client.GetAsync(operation); status = (await read.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("status").GetString();
+            if (status == "Completed") break; await Task.Delay(100);
+        } while (DateTimeOffset.UtcNow < deadline);
+        Assert.Equal("Completed", status);
+        client.DefaultRequestHeaders.Authorization = new("Bearer", "test-checker");
+        using var forbidden = await client.PostAsJsonAsync("/print-jobs", new { gameId = game, teamId = team, blankIds = Array.Empty<string>(), taskIds = new[] { task } });
+        Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
+        Assert.False(forbidden.Headers.Contains("Operation-Id"));
+        var policy=application.Services.GetRequiredService<Olympiad.Workflows.Infrastructure.HttpWorkflowOptions>();
+        foreach(var failure in new Exception[] {new Olympiad.Materials.Application.AccessDeniedException(),new Olympiad.Materials.Application.NotFoundException("Missing"),new Olympiad.Materials.Domain.DomainException("VALIDATION_ERROR","Invalid"),new JsonException(),new Microsoft.AspNetCore.Http.BadHttpRequestException("Invalid")})
+            Assert.InRange(policy.ClassifyError(failure).Status,400,499);
+        foreach(var failure in new Exception[] {new Olympiad.Materials.Application.DependencyUnavailableException("Offline"),new OperationCanceledException(),new IOException()})
+            Assert.InRange(policy.ClassifyError(failure).Status,500,599);
     }
     private static string FindRoot()
     {

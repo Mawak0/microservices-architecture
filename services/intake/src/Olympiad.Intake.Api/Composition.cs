@@ -9,11 +9,13 @@ namespace Olympiad.Intake.Api;
 
 internal static class Composition
 {
-    public static void AddIntake(this WebApplicationBuilder builder)
+    internal sealed record Storage(PostgresDatabase Database,S3Objects? Objects);
+    public static Storage AddIntake(this WebApplicationBuilder builder)
     {
         var services = builder.Services;
         var connectionString = builder.Configuration["Storage:ConnectionString"] ?? throw new InvalidOperationException("Configure Storage:ConnectionString for PostgreSQL.");
-        services.AddSingleton(new PostgresDatabase(connectionString));
+        var database=new PostgresDatabase(connectionString); S3Objects? objects=null;
+        services.AddSingleton(database);
         services.AddSingleton<IIntakeUnitOfWork>(provider => provider.GetRequiredService<PostgresDatabase>());
         HttpClient Client(string key)
         {
@@ -45,12 +47,18 @@ internal static class Composition
             string Setting(string key) => builder.Configuration["S3:" + key] ?? throw new InvalidOperationException("Configure S3:" + key);
             var client = new S3Options(Setting("Endpoint"), Setting("Region"), Setting("AccessKey"), Setting("SecretKey"), "answer-images").CreateClient();
             services.AddSingleton(client);
-            services.AddSingleton(new S3Objects(client, "answer-images"));
+            objects=new S3Objects(client,"answer-images"); services.AddSingleton(objects);
             services.AddSingleton<S3ImageStorage>();
             services.AddSingleton<IImageStorage>(provider => provider.GetRequiredService<S3ImageStorage>());
             services.AddSingleton<IImageReader>(provider => provider.GetRequiredService<S3ImageStorage>());
         }
-        AddDependency<IEventPublisher>("Events", client => new HttpEventPublisher(client));
+        if(objects is not null && builder.Configuration.GetValue("Workflows:Enabled",true))
+        {
+            services.AddKeyedSingleton<HttpClient>("Review",(_,_)=>Client("Review"));
+            services.AddSingleton<IEventPublisher>(provider=>new ReviewDelivery(provider.GetRequiredKeyedService<HttpClient>("Review"),
+                provider.GetRequiredService<Olympiad.Workflows.Application.IProcessStore>(),provider.GetRequiredService<S3Objects>()));
+        }
+        else AddDependency<IEventPublisher>("Events", client => new HttpEventPublisher(client,objects));
         if (!string.IsNullOrWhiteSpace(builder.Configuration["Dependencies:ClockBaseUrl"]))
         {
             if (!builder.Environment.IsEnvironment("ContractTests"))
@@ -69,5 +77,6 @@ internal static class Composition
         services.AddSingleton<DeliverPendingEvent>(); services.AddSingleton<RecoverPendingSubmission>();
         services.AddHostedService<OutboxWorker>(); services.AddHostedService<SubmissionRecoveryWorker>();
         builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = 24 * 1024 * 1024);
+        return new(database,objects);
     }
 }

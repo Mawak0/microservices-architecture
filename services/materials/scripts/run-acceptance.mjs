@@ -49,7 +49,7 @@ try {
   const fixture = start(process.execPath, ['test-support/fixtures.mjs'], { FIXTURE_PORT: new URL(fixtureUrl).port }, true);
   await ready(fixtureUrl, fixture);
   const serviceEnvironment = {
-    ASPNETCORE_URLS: serviceUrl, ASPNETCORE_ENVIRONMENT: 'ContractTests', Dependencies__BaseUrl: fixtureUrl,
+    ASPNETCORE_URLS: serviceUrl, ASPNETCORE_ENVIRONMENT: 'ContractTests', Workflows__Enabled: 'false', Dependencies__BaseUrl: fixtureUrl,
     Dependencies__ClockBaseUrl: fixtureUrl, Dependencies__AccessToken: 'test-system',
     S3__Endpoint: process.env.TEST_S3_ENDPOINT, S3__Region: 'us-east-1',
     S3__AccessKey: process.env.TEST_S3_ACCESS_KEY, S3__SecretKey: process.env.TEST_S3_SECRET_KEY,

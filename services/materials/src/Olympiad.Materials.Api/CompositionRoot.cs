@@ -32,6 +32,8 @@ internal static class CompositionRoot
         await objects.InitializeAsync(cancellationToken);
         builder.Services.AddSingleton(objects);
         builder.Services.AddSingleton<IPrintArtifactStorage, S3PrintArtifacts>();
+        if(config.GetValue("Workflows:Enabled",true))
+            builder.Services.AddSingleton<Olympiad.Workflows.Application.IProcessProbe,PrintCheckpointProbe>();
         DependencyClient Dependency(string specific)
         {
             var baseUrl = config[$"Dependencies:{specific}BaseUrl"] ?? config["Dependencies:BaseUrl"];

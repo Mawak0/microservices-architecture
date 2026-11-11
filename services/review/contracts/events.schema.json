@@ -32,6 +32,16 @@
           "minimum": 1
         }
       }
+    },
+    "operationId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "processVersion": {
+      "type": "integer",
+      "const": 1
     }
   },
   "oneOf": [
