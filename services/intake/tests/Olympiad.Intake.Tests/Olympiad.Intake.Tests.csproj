@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><IsTestProject>true</IsTestProject><IsPackable>false</IsPackable></PropertyGroup>
   <ItemGroup>
-    
+    <ProjectReference Include="../../src/Olympiad.Intake.Api/Olympiad.Intake.Api.csproj" />
     <ProjectReference Include="../../src/Olympiad.Intake.Domain/Olympiad.Intake.Domain.csproj" />
     <ProjectReference Include="../../src/Olympiad.Intake.Application/Olympiad.Intake.Application.csproj" />
     <ProjectReference Include="../../src/Olympiad.Intake.Infrastructure/Olympiad.Intake.Infrastructure.csproj" />
