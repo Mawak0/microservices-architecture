@@ -1,7 +1,7 @@
 {
   "service": "materials",
-  "stage": 3,
+  "stage": 4,
   "total": 6,
   "sourceCommit": "a4f7f76f81f7a1d086dfa813064fa37bbd785acd",
-  "title": "Выпуск бланков и проверка QR"
+  "title": "Подготовка печатных PDF"
 }

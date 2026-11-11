@@ -39,7 +39,16 @@ public sealed class ApplicationTests
         Assert.Same(original, await handler.ExecuteAsync(Sample.Admin(), new("game", "team"), default));
         Assert.Equal(3, original.BlankIds.Count);
     }
-
+    [Fact] public async Task PrintingCapturesSnapshotAndReplayDoesNotReadChangedTemplate()
+    {
+        var dependency = new StubDependencies(); var transactions = new MemoryTransactions();
+        var handler = new CreatePrintJob(dependency, dependency, dependency, dependency, transactions);
+        var command = new CreatePrintJobCommand("game", "team", [], ["task-1"]);
+        var first = await handler.ExecuteAsync(Sample.Admin(), command, default);
+        dependency.Game = Sample.Game(key: "changed"); dependency.Unavailable = true;
+        var repeat = await handler.ExecuteAsync(Sample.Admin(), command, default);
+        Assert.Equal(first.Id, repeat.Id); Assert.Equal("layout/v1", repeat.Snapshot.Template.Key);
+    }
 
     [Fact] public async Task RealRegistryAndSignatureAreBothRequired()
     {
