@@ -1,11 +1,11 @@
 using System.Text.Json;
-using Microsoft.Data.Sqlite;
+using Npgsql;
 namespace Olympiad.Review.Infrastructure;
-internal sealed class DatabaseScope(SqliteConnection connection, SqliteTransaction transaction,
+internal sealed class DatabaseScope(NpgsqlConnection connection, NpgsqlTransaction transaction,
     CancellationToken cancellationToken)
 {
     internal static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
-    public SqliteCommand Command(string sql, params (string Name, object? Value)[] values)
+    public NpgsqlCommand Command(string sql, params (string Name, object? Value)[] values)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var command = connection.CreateCommand(); command.Transaction = transaction; command.CommandText = sql;

@@ -215,18 +215,19 @@ public sealed class ApiTests
         private readonly string directory = Path.Combine(Path.GetTempPath(), "olympiad-http-" + Guid.NewGuid());
         private readonly WebApplicationFactory<Program> factory;
         private bool stopped;
-        public SqliteDatabase Database { get; }
+        public PostgresDatabase Database { get; }
         public Dependencies Backend { get; } = new();
         public ApiFixture()
         {
             Directory.CreateDirectory(directory);
-            Database = new SqliteDatabase($"Data Source={Path.Combine(directory, "intake.db")};Pooling=False");
+            Database = new PostgresDatabase(TestDatabase.For(Path.Combine(directory, "intake.db")));
             factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
             {
                 builder.UseEnvironment("Testing");
+                builder.UseSetting("Storage:ConnectionString", TestDatabase.For(Path.Combine(directory, "intake.db")));
                 builder.ConfigureServices(services =>
                 {
-                    services.RemoveAll<SqliteDatabase>();
+                    services.RemoveAll<PostgresDatabase>();
                     services.AddSingleton(Database);
                     foreach (var name in new[] { "Games", "Teams", "Materials", "Identity", "Images", "Events" })
                         services.AddKeyedSingleton<HttpClient>(name, (_, _) => new HttpClient(Backend, disposeHandler: false) { BaseAddress = new Uri("https://dependencies.example/") });

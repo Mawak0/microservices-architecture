@@ -65,12 +65,12 @@ INVALID_IMAGE, QR_UNREADABLE, QR_MISMATCH, VALIDATION_ERROR, BLANK_ALREADY_ACCEP
 TEAM_NOT_ADMITTED, STORAGE_UNAVAILABLE, IDEMPOTENCY_KEY_REUSED,
 ADMISSION_VERSION_MISMATCH, DEADLINE_NOT_REACHED, LATE_ADMISSION_ACTIVE.
 
-Реализация: C# 12 / .NET 8, четыре слоя Clean Architecture, SQLite WAL,
+Реализация: C# 12 / .NET 8, четыре слоя Clean Architecture, PostgreSQL WAL,
 журнал проверенных снимков, уникальные резервирования и надёжный outbox.
 Приём фиксируется после сохранения снимка и повторной проверки разрешения;
 загрузка, закончившаяся после дедлайна, без позднего разрешения отклоняется.
 Crash/restart, rollback, отмена и сохранение идемпотентности проверены тестами.
-Согласованность фото/SQLite и границы внешнего хранилища описаны в
+Согласованность фото/PostgreSQL и границы внешнего хранилища описаны в
 docs/ARCHITECTURE.md. Безопасность выдачи файлов обеспечивает настроенный
 провайдер хранения; камера/UI остаются отдельным заданием.
 Дополнительные технические ответы: 503 DEPENDENCY_UNAVAILABLE при недоступной

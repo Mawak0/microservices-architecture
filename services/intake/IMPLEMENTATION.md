@@ -1,7 +1,7 @@
 # Implementation standard: olympiad services
 
-All three implementations use C# 12 / .NET 8 / ASP.NET Core, SQLite via
-Microsoft.Data.Sqlite, and xUnit. Existing Node acceptance tests remain the
+All three implementations use C# 12 / .NET 8 / ASP.NET Core, PostgreSQL via
+Microsoft.Data.Postgres, and xUnit. Existing Node acceptance tests remain the
 language-neutral contract. Implement their real behavior without weakening tests.
 
 ## Dependency rule
@@ -13,7 +13,7 @@ language-neutral contract. Implement their real behavior without weakening tests
   capability-specific ports, commands/queries and orchestration. No frameworks,
   SQL, HttpClient, JsonElement/dynamic business state, service locator, or globals.
 - src/Olympiad.<Service>.Infrastructure: references Domain/Application; implements
-  SQLite repositories/transactions, external HTTP gateways, clock, outbox and
+  PostgreSQL repositories/transactions, external HTTP gateways, clock, outbox and
   QR/PDF/file adapters. Serialization models remain adapter-local.
 - src/Olympiad.<Service>.Api: HTTP binding, authorization, error mapping and
   composition root. Business decisions belong inward, not to endpoint handlers.
@@ -30,7 +30,7 @@ No catch-all success, no unused scaffolding, no TODO domain behavior.
 
 ## Reliability and extensibility
 
-Persist aggregates, idempotency results and pending events in SQLite. Atomically
+Persist aggregates, idempotency results and pending events in PostgreSQL. Atomically
 save aggregate changes and outgoing events; publish from a retrying outbox with
 stable event IDs. Handle uniqueness/concurrent commands through database
 transactions/constraints. Avoid a single process-wide lock as the consistency
@@ -53,7 +53,7 @@ Review additionally supports Dependencies__ReceiptsBaseUrl. Optional
 Dependencies__AccessToken authenticates outgoing requests; test launchers set
 their synthetic credential explicitly. Materials supports Templates__Directory
 for its owned file catalog and Pdf__FontPath for a Unicode TrueType font.
-Storage__ConnectionString selects SQLite; default persistent .data/service.db.
+Storage__ConnectionString is required and selects a PostgreSQL database owned by this service. See deploy/README.md for provisioning and tests.
 Optional Dependencies__ClockBaseUrl is enabled only in ContractTests environment;
 otherwise use server system clock. Runtime__LeaseSeconds controls review TTL.
 HTTP URLs use ASPNETCORE_URLS. Default example ports: materials 8081, intake 8082,
@@ -61,7 +61,7 @@ review 8083. GET /health supports test readiness without credentials.
 
 Provide scripts/run-acceptance.mjs and npm run test:service. The launcher builds
 the real service, starts an isolated fixture process and real service with fresh
-temp SQLite, runs unchanged acceptance tests, and cleans up child processes in
+temp PostgreSQL, runs unchanged acceptance tests, and cleans up child processes in
 finally. It must reject startup failures and leave no hidden servers. Keep normal
 npm test checks. Provide dotnet test and architecture tests in CI, plus actual
 contract acceptance against this real process.

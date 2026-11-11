@@ -1,3 +1,4 @@
+import { postgresConnection } from '../test-support/postgres.mjs';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
 import { mkdtemp, rm } from 'node:fs/promises';
@@ -50,7 +51,7 @@ try {
   const serviceEnvironment = {
     ASPNETCORE_URLS: serviceUrl, ASPNETCORE_ENVIRONMENT: 'ContractTests', Dependencies__BaseUrl: fixtureUrl,
     Dependencies__ClockBaseUrl: fixtureUrl, Dependencies__AccessToken: 'test-system',
-    Storage__ConnectionString: `Data Source=${join(directory, 'materials.db')}`
+    Storage__ConnectionString: await postgresConnection(directory)
   };
   let service = start('dotnet', ['src/Olympiad.Materials.Api/bin/Release/net8.0/Olympiad.Materials.Api.dll'], serviceEnvironment, true);
   await ready(serviceUrl, service);

@@ -1,3 +1,4 @@
+import { postgresConnection } from '../test-support/postgres.mjs';
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import net from 'node:net';
@@ -136,7 +137,7 @@ async function startService(name) {
     cwd: roots[name], windowsHide: true,
     env: { ...process.env, ASPNETCORE_URLS: urls[name], ASPNETCORE_ENVIRONMENT: 'ContractTests', DOTNET_ENVIRONMENT: 'ContractTests',
       Dependencies__BaseUrl: bridgeUrl, Dependencies__ClockBaseUrl: fixtureUrl, Dependencies__AccessToken: 'test-system',
-      Storage__ConnectionString: `Data Source=${path.join(temp, `${name}.db`)}`, Runtime__LeaseSeconds: '60' },
+      Storage__ConnectionString: await postgresConnection(path.join(temp, name)), Runtime__LeaseSeconds: '60' },
     stdio: ['ignore', 'pipe', 'pipe']
   });
   children.set(name, child); logs.set(name, '');

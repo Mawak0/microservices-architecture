@@ -31,13 +31,13 @@ project references, public mutation и imports API.
 |---|---|
 | SRP | PrepareKit, IssueBlanks, CreatePrintJob, ProcessPrintJobs и PublishOutbox — отдельные use cases. Каждый SQL repository отвечает за свой агрегат. Renderer не ходит в HTTP/БД. |
 | OCP | Новые имена игр/шаблоны задаются данными. ITemplateRepository заменяется file/HTTP adapters; IPdfRenderer заменяется при новом формате. Ввод новых визуальных примитивов может требовать нового renderer/формата, не ветки по имени игры. |
-| LSP | Один repository contract suite исполняется против memory test adapter и настоящей SQLite: lookup, metadata, rollback/outbox, snapshot/artifact. Один template contract проверяет file/HTTP adapters. |
+| LSP | Один repository contract suite исполняется против memory test adapter и настоящей PostgreSQL: lookup, metadata, rollback/outbox, snapshot/artifact. Один template contract проверяет file/HTTP adapters. |
 | ISP | Узкие порты для конфигурации игры, допуска, условия задачи, шаблонов, подписи, PDF, часов и событий. Repositories не содержат network/PDF методов. |
 | DIP | Application зависит от портов/доменной модели. Реализации передаются конструкторами в composition root. Нет service locator в core или API handlers. |
 
 Интерфейсы выделены для substitutable boundaries; use cases не обёрнуты интерфейсом
 на каждый класс. IMaterialsSession группирует repositories одной транзакции:
-explicit unit of work, не универсальный dispatcher. SQLite имеет отдельные таблицы
+explicit unit of work, не универсальный dispatcher. PostgreSQL имеет отдельные таблицы
 агрегатов, связей, PDF, replay и outbox. JSON хранит закрытый сложный snapshot,
 typed event payload и список неизменяемых replay references; не заменяет всю БД
 бизнес-словарём.
@@ -58,7 +58,7 @@ replay проверяется повторно, закрывая race. Резу�
 событие pending с прежним eventId. Crash/несколько экземпляров могут повторно
 публиковать событие: потребитель выполняет dedup, как предусмотрено контрактом.
 
-SQLite WAL сохраняет registrations, replay, snapshots, PDFs и pending events
+PostgreSQL WAL сохраняет registrations, replay, snapshots, PDFs и pending events
 после рестарта. Running jobs возвращаются после истечения технической аренды
 обработки. Это не назначение жюри и не новый цикл игры. Схема имеет версию 1;
 дальнейшие изменения требуют миграций.
@@ -67,7 +67,7 @@ SQLite WAL сохраняет registrations, replay, snapshots, PDFs и pending 
 
 Versioned QR содержит ID/номер бланка, игру/команду, taskId/taskNumber и модификатор.
 HMAC-SHA256 использует constant-time сравнение и полное сопоставление с реестром.
-Ключ — случайные 32 bytes в persisted SQLite либо внешняя конфигурация, не тестовая
+Ключ — случайные 32 bytes в persisted PostgreSQL либо внешняя конфигурация, не тестовая
 константа. БД должна быть защищена: persisted secret не является шифрованием.
 Несогласованная смена настроенного ключа отклоняется; нужна явная миграция.
 

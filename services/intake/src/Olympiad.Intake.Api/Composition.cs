@@ -11,9 +11,9 @@ internal static class Composition
     public static void AddIntake(this WebApplicationBuilder builder)
     {
         var services = builder.Services;
-        var connectionString = builder.Configuration["Storage:ConnectionString"] ?? "Data Source=.data/intake.db;Default Timeout=30";
-        services.AddSingleton(new SqliteDatabase(connectionString));
-        services.AddSingleton<IIntakeUnitOfWork>(provider => provider.GetRequiredService<SqliteDatabase>());
+        var connectionString = builder.Configuration["Storage:ConnectionString"] ?? throw new InvalidOperationException("Configure Storage:ConnectionString for PostgreSQL.");
+        services.AddSingleton(new PostgresDatabase(connectionString));
+        services.AddSingleton<IIntakeUnitOfWork>(provider => provider.GetRequiredService<PostgresDatabase>());
         HttpClient Client(string key)
         {
             var address = builder.Configuration[$"Dependencies:{key}BaseUrl"] ?? builder.Configuration["Dependencies:BaseUrl"];

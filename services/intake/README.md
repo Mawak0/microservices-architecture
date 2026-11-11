@@ -1,6 +1,6 @@
 # Олимпиадная платформа: сервис приёма бланков
 
-Реализованный backend на C# 12 / .NET 8 / ASP.NET Core и SQLite.
+Реализованный backend на C# 12 / .NET 8 / ASP.NET Core и PostgreSQL.
 Контракт 0.3 и исходные 30 приёмочных сценариев сохранены. Domain, Application,
 Infrastructure и Api — отдельные проекты с проверяемым направлением зависимостей.
 Подробности решений SOLID, сохранения и восстановления: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
@@ -20,10 +20,10 @@ dotnet build Olympiad.Intake.sln --configuration Release
 ```
 
 npm test проверяет схемы и тестовый стенд. dotnet test проверяет агрегаты,
-сценарии, фактические архитектурные границы, SQLite rollback/restart/outbox,
+сценарии, фактические архитектурные границы, PostgreSQL rollback/restart/outbox,
 отмену, конкурентные запросы и реальные PNG/JPEG/неоднозначные QR.
 npm run test:service собирает настоящий API, запускает отдельный процесс внешних
-заглушек, создаёт временную SQLite, выполняет неизменённые I01–I30 и дополнительные
+заглушек, создаёт временную PostgreSQL, выполняет неизменённые I01–I30 и дополнительные
 проверки реального перезапуска, затем останавливает процессы и удаляет временные данные.
 Заглушки не выполняют логику сервиса приёма.
 
@@ -38,7 +38,7 @@ $env:ASPNETCORE_URLS = 'http://127.0.0.1:8082'
 dotnet run --project src/Olympiad.Intake.Api
 ```
 
-По умолчанию используется .data/intake.db. GET /health не требует credentials.
+Требуется Storage__ConnectionString с адресом PostgreSQL; значения по умолчанию нет. GET /health не требует credentials.
 В обычном окружении сервис использует системное UTC-время.
 Для управляемых часов стенда задайте ASPNETCORE_ENVIRONMENT=ContractTests
 и Dependencies__ClockBaseUrl; в другом окружении эта настройка запрещена.
@@ -56,7 +56,7 @@ dotnet run --project src/Olympiad.Intake.Api
 | Dependencies__EventsBaseUrl | HTTP-приёмник /events |
 | Dependencies__AccessToken | Необязательный Bearer для доверенных интеграций |
 | Dependencies__ClockBaseUrl | GET /clock, исключительно ContractTests |
-| Storage__ConnectionString | SQLite, например Data Source=.data/intake.db;Default Timeout=30 |
+| Storage__ConnectionString | Host=localhost;Port=55432;Database=intake;Username=intake;Password=... |
 | Runtime__MaximumImageBytes | Лимит снимка, 1..15728640 байтов, по умолчанию 15 MiB |
 | ASPNETCORE_URLS | Адрес API, пример http://127.0.0.1:8082 |
 

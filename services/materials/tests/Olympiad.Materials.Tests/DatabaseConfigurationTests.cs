@@ -1,4 +1,4 @@
-using Microsoft.Data.Sqlite;
+using Npgsql;
 using Olympiad.Materials.Infrastructure.Persistence;
 using Xunit;
 
@@ -11,8 +11,8 @@ public sealed class DatabaseConfigurationTests
     [InlineData(true)]
     public async Task ExplicitPoolingSettingIsPreserved(bool pooling)
     {
-        var database = new SqliteDatabase($"Data Source=:memory:;Pooling={pooling}");
+        var database = new PostgresDatabase(new NpgsqlConnectionStringBuilder(TestDatabase.For(Guid.NewGuid().ToString())) { Pooling = pooling }.ConnectionString);
         await using var connection = await database.OpenAsync(default);
-        Assert.Equal(pooling, new SqliteConnectionStringBuilder(connection.ConnectionString).Pooling);
+        Assert.Equal(pooling, new NpgsqlConnectionStringBuilder(connection.ConnectionString).Pooling);
     }
 }

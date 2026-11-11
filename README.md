@@ -43,7 +43,7 @@
 | services/review/ | Назначения проверяющим, вердикты, апелляции и квота |
 
 В каждом каталоге находятся исходники, тесты, контракты и собственный README.
-Сервисы используют .NET 8, C# 12, ASP.NET Core и SQLite.
+Сервисы используют .NET 8, C# 12, ASP.NET Core и PostgreSQL.
 Снимки бизнес-правил и источник Figma находятся в docs/event-storming/.
 Первоначальные общие договорённости сохранены в legacy/contract-baseline/.
 
@@ -54,3 +54,5 @@
 Команды запуска API и подробная конфигурация приведены в README соответствующего сервиса.
 HTTP-контракты и события находятся в services/<service>/contracts/;
 предметные правила — в SERVICE.md и CONTRACTS.md.
+
+Настройка PostgreSQL, локальный запуск и тестовая база: [deploy/README.md](deploy/README.md).

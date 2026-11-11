@@ -1,4 +1,4 @@
-using Microsoft.Data.Sqlite;
+using Npgsql;
 using Olympiad.Review.Application;
 using Olympiad.Review.Domain;
 using Olympiad.Review.Infrastructure;
@@ -7,20 +7,20 @@ namespace Olympiad.Review.Tests;
 public sealed class PersistenceTests : IDisposable
 {
     private readonly string directory = Path.Combine(Path.GetTempPath(), "olympiad-review-tests-" + Guid.NewGuid());
-    private SqliteDatabase Database()
+    private PostgresDatabase Database()
     {
-        var database = new SqliteDatabase("Data Source=" + Path.Combine(directory, "review.db"));
+        var database = new PostgresDatabase(TestDatabase.For(Path.Combine(directory, "review.db")));
         database.Initialize(); return database;
     }
     private static CommandIdentity Identity(string key = "key", string actor = "actor") => new(actor, "verdict", key, "hash");
     [Fact]
     public async Task RestartRetainsCheckLeaseFencingAndSuccessfulResponse()
     {
-        var tx = new SqliteTransactions(Database()); var c = DomainTests.Check();
+        var tx = new NpgsqlTransactions(Database()); var c = DomainTests.Check();
         c.Claim("actor", "token", DomainTests.Now, TimeSpan.FromMinutes(1), false);
         await tx.Run<CheckView>(null, s => { s.Checks.Save(c); return new(CheckView.From(c)); }, default);
         var first = await new RecordVerdict(tx, new FixedClock()).Execute(Identity(), c.Id, "token", Verdict.Incorrect, default);
-        var restarted = new SqliteTransactions(Database());
+        var restarted = new NpgsqlTransactions(Database());
         var replay = await new RecordVerdict(restarted, new OfflineClock()).Execute(Identity(), c.Id, "token", Verdict.Incorrect, default);
         Assert.Equal(first.Value.Revision, replay.Value.Revision); Assert.Equal(first.Value.History, replay.Value.History);
         Assert.Equal("IDEMPOTENCY_KEY_REUSED", (await Assert.ThrowsAsync<DomainFailure>(() =>
@@ -30,7 +30,7 @@ public sealed class PersistenceTests : IDisposable
     [Fact]
     public async Task TransactionRollsBackAggregateAndOutboxTogether()
     {
-        var database = Database(); var tx = new SqliteTransactions(database); var c = DomainTests.Check();
+        var database = Database(); var tx = new NpgsqlTransactions(database); var c = DomainTests.Check();
         await Assert.ThrowsAsync<InvalidOperationException>(() => tx.Run<int>(null, s =>
         {
             s.Checks.Save(c); s.Events.Add(Event()); throw new InvalidOperationException("failure before commit");
@@ -41,13 +41,13 @@ public sealed class PersistenceTests : IDisposable
     [Fact]
     public async Task SeparateConnectionsCannotOverconsumeQuota()
     {
-        var tx = new SqliteTransactions(Database());
+        var tx = new NpgsqlTransactions(Database());
         await tx.Run<int>(null, s => { s.Quotas.Save(new("game", 1)); return new(0); }, default);
         async Task<string> Consume()
         {
             try
             {
-                await Task.Run(() => new SqliteTransactions(Database()).Run<int>(null, s =>
+                await Task.Run(() => new NpgsqlTransactions(Database()).Run<int>(null, s =>
                 {
                     var quota = s.Quotas.Get("game"); quota.Use(); s.Quotas.Save(quota); return new(quota.Used);
                 }, default)); return "success";
@@ -61,11 +61,11 @@ public sealed class PersistenceTests : IDisposable
     [Fact]
     public async Task SqlUniqueConstraintsProtectReceiptAndAppealIdentity()
     {
-        var tx = new SqliteTransactions(Database()); var first = DomainTests.Checked();
+        var tx = new NpgsqlTransactions(Database()); var first = DomainTests.Checked();
         await tx.Run<int>(null, s => { s.Checks.Save(first); s.Appeals.Save(Appeal.Open("first", first, "request")); return new(0); }, default);
         var duplicate = AnswerCheck.Create("different", first.Receipt, "4");
-        await Assert.ThrowsAsync<SqliteException>(() => tx.Run<int>(null, s => { s.Checks.Save(duplicate); return new(0); }, default));
-        await Assert.ThrowsAsync<SqliteException>(() => tx.Run<int>(null, s =>
+        await Assert.ThrowsAsync<PostgresException>(() => tx.Run<int>(null, s => { s.Checks.Save(duplicate); return new(0); }, default));
+        await Assert.ThrowsAsync<PostgresException>(() => tx.Run<int>(null, s =>
         {
             s.Appeals.Save(Appeal.Open("second", first, "request")); return new(0);
         }, default));
@@ -73,7 +73,7 @@ public sealed class PersistenceTests : IDisposable
     [Fact]
     public async Task FailedDeliveryRetainsExactEventAcrossDispatcherRestart()
     {
-        var database = Database(); var tx = new SqliteTransactions(database); var message = Event();
+        var database = Database(); var tx = new NpgsqlTransactions(database); var message = Event();
         await tx.Run<int>(null, s => { s.Events.Add(message); return new(0); }, default);
         var offline = new RecordingPublisher { Available = false };
         await Assert.ThrowsAsync<DomainFailure>(() => new OutboxDispatcher(database, offline).Drain(default));
@@ -86,7 +86,7 @@ public sealed class PersistenceTests : IDisposable
     [Fact]
     public async Task DuplicateDeliveryUsesPersistedCaseWithoutExternalDependencies()
     {
-        var tx = new SqliteTransactions(Database()); var c = DomainTests.Check();
+        var tx = new NpgsqlTransactions(Database()); var c = DomainTests.Check();
         await tx.Run<int>(null, s => { s.Checks.Save(c); return new(0); }, default);
         var result = await new ReceiveReceipt(tx, new OfflineReceipts(), new OfflineTasks())
             .Execute(Identity(), "new-event", c.Receipt, default);
@@ -114,7 +114,7 @@ public sealed class PersistenceTests : IDisposable
     private sealed class OfflineTasks : ITaskAnswers { public Task<string> Get(string id, CancellationToken ct) => throw new InvalidOperationException("Task dependency called"); }
     public void Dispose()
     {
-        SqliteConnection.ClearAllPools();
+        NpgsqlConnection.ClearAllPools();
         if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true);
     }
 }

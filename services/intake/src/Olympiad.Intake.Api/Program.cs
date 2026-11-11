@@ -4,7 +4,7 @@ using Olympiad.Intake.Infrastructure.Persistence;
 var builder = WebApplication.CreateBuilder(args);
 builder.AddIntake();
 var app = builder.Build();
-await app.Services.GetRequiredService<SqliteDatabase>().InitializeAsync();
+await app.Services.GetRequiredService<PostgresDatabase>().InitializeAsync();
 app.UseRouting();
 app.UseMiddleware<ErrorMiddleware>();
 app.UseMiddleware<AuthorizationMiddleware>();

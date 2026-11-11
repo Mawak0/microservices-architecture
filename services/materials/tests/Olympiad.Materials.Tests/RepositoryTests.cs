@@ -2,7 +2,7 @@ using Olympiad.Materials.Application;
 using Olympiad.Materials.Domain;
 using Olympiad.Materials.Infrastructure.Persistence;
 using Olympiad.Materials.Infrastructure.Security;
-using Microsoft.Data.Sqlite;
+using Npgsql;
 using Xunit;
 
 namespace Olympiad.Materials.Tests;
@@ -10,16 +10,15 @@ namespace Olympiad.Materials.Tests;
 internal sealed class RepositoryFixture : IAsyncDisposable
 {
     private readonly string directory = Path.Combine(Path.GetTempPath(), $"materials-unit-{Guid.NewGuid()}");
-    public string ConnectionString => $"Data Source={Path.Combine(directory, "test.db")}";
-    public async Task<IMaterialsTransactions> CreateAsync(bool sqlite)
+    public string ConnectionString => TestDatabase.For(Path.Combine(directory, "test.db"));
+    public async Task<IMaterialsTransactions> CreateAsync(bool postgres)
     {
-        if (!sqlite) return new MemoryTransactions();
-        var database = new SqliteDatabase(ConnectionString); await database.InitializeAsync(default); return new SqliteMaterialsTransactions(database);
+        if (!postgres) return new MemoryTransactions();
+        var database = new PostgresDatabase(ConnectionString); await database.InitializeAsync(default); return new PostgresMaterialsTransactions(database);
     }
     public ValueTask DisposeAsync()
     {
-        SqliteConnection.ClearPool(new SqliteConnection(new SqliteConnectionStringBuilder(ConnectionString)
-            { DefaultTimeout = 30, Pooling = true, ForeignKeys = true }.ToString()));
+        NpgsqlConnection.ClearPool(new NpgsqlConnection(ConnectionString));
         if (Directory.Exists(directory)) Directory.Delete(directory, true);
         return ValueTask.CompletedTask;
     }
@@ -27,9 +26,9 @@ internal sealed class RepositoryFixture : IAsyncDisposable
 public sealed class RepositoryTests
 {
     [Theory] [InlineData(false)] [InlineData(true)]
-    public async Task RepositoryContractRoundTripsIdentityAndTransactionalMetadata(bool sqlite)
+    public async Task RepositoryContractRoundTripsIdentityAndTransactionalMetadata(bool postgres)
     {
-        await using var fixture = new RepositoryFixture(); var store = await fixture.CreateAsync(sqlite);
+        await using var fixture = new RepositoryFixture(); var store = await fixture.CreateAsync(postgres);
         await store.ExecuteAsync(async (s, ct) =>
         {
             Assert.Null(await s.Blanks.FindAsync("unknown", ct));
@@ -50,9 +49,9 @@ public sealed class RepositoryTests
         }, default);
     }
     [Theory] [InlineData(false)] [InlineData(true)]
-    public async Task RepositoryContractRollsBackAggregateAndOutboxTogether(bool sqlite)
+    public async Task RepositoryContractRollsBackAggregateAndOutboxTogether(bool postgres)
     {
-        await using var fixture = new RepositoryFixture(); var store = await fixture.CreateAsync(sqlite);
+        await using var fixture = new RepositoryFixture(); var store = await fixture.CreateAsync(postgres);
         await Assert.ThrowsAsync<InvalidOperationException>(() => store.ExecuteAsync<bool>(async (s, ct) =>
         {
             await s.Blanks.AddAsync(Sample.Blank(), ct);
@@ -62,9 +61,9 @@ public sealed class RepositoryTests
         await store.ExecuteAsync(async (s, ct) => { Assert.Null(await s.Blanks.FindAsync("blank", ct)); Assert.Empty(await s.Outbox.GetPendingAsync(10, ct)); return true; }, default);
     }
     [Theory] [InlineData(false)] [InlineData(true)]
-    public async Task RepositoryContractPersistsKitAndSnapshotAndCompletedArtifact(bool sqlite)
+    public async Task RepositoryContractPersistsKitAndSnapshotAndCompletedArtifact(bool postgres)
     {
-        await using var fixture = new RepositoryFixture(); var store = await fixture.CreateAsync(sqlite);
+        await using var fixture = new RepositoryFixture(); var store = await fixture.CreateAsync(postgres);
         var job = new PrintJob("job", "game", "team", Sample.Snapshot()); var now = DateTimeOffset.UtcNow;
         await store.ExecuteAsync(async (s, ct) =>
         {
@@ -89,18 +88,18 @@ public sealed class RepositoryTests
     [Fact] public async Task FreshDatabaseAdapterRetainsSecretBlanksReplayAndPendingEvents()
     {
         await using var fixture = new RepositoryFixture(); var first = await fixture.CreateAsync(true);
-        var database = new SqliteDatabase(fixture.ConnectionString); var key = await database.GetOrCreateSigningKeyAsync(null, default);
+        var database = new PostgresDatabase(fixture.ConnectionString); var key = await database.GetOrCreateSigningKeyAsync(null, default);
         var dependency = new StubDependencies();
         var issued = await new IssueBlanks(dependency, dependency, first, new HmacBlankTokenProtector(key), dependency)
             .ExecuteAsync(Sample.Admin(), new("game", "team", "task-1", 1, null), default);
-        var reopened = await fixture.CreateAsync(true); var restoredKey = await new SqliteDatabase(fixture.ConnectionString).GetOrCreateSigningKeyAsync(null, default);
+        var reopened = await fixture.CreateAsync(true); var restoredKey = await new PostgresDatabase(fixture.ConnectionString).GetOrCreateSigningKeyAsync(null, default);
         Assert.Equal(key, restoredKey); dependency.Unavailable = true;
         var repeat = await new IssueBlanks(dependency, dependency, reopened, new HmacBlankTokenProtector(restoredKey), dependency)
             .ExecuteAsync(Sample.Admin(), new("game", "team", "task-1", 1, null), default);
         Assert.Equal(issued[0].QrToken, repeat[0].QrToken);
         Assert.Single(await reopened.ExecuteAsync((s, ct) => s.Outbox.GetPendingAsync(100, ct), default));
     }
-    [Fact] public async Task SqliteConcurrentIssuanceUsesUniqueSequenceAndOnlyOneReplayEffect()
+    [Fact] public async Task PostgresConcurrentIssuanceUsesUniqueSequenceAndOnlyOneReplayEffect()
     {
         await using var fixture = new RepositoryFixture(); var store = await fixture.CreateAsync(true); var dependency = new StubDependencies();
         var handler = new IssueBlanks(dependency, dependency, store, new HmacBlankTokenProtector(new byte[32]), dependency);

@@ -40,7 +40,7 @@ public sealed class ArchitectureTests
                 .Where(path => !path.Contains(Path.DirectorySeparatorChar + "obj" + Path.DirectorySeparatorChar)))
             {
                 var code = File.ReadAllText(path);
-                foreach (var forbidden in new[] { "HttpClient", "JsonElement", "JsonObject", "Sqlite", "IServiceProvider",
+                foreach (var forbidden in new[] { "HttpClient", "JsonElement", "JsonObject", "Postgres", "IServiceProvider",
                     "IConfiguration", "HttpContext", "System.IO", "System.Text.Json", "DateTimeOffset.UtcNow" })
                     Assert.DoesNotContain(forbidden, code);
             }

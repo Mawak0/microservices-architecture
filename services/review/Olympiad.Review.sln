@@ -13,6 +13,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Olympiad.Review.Api", "src\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Olympiad.Review.Tests", "tests\Olympiad.Review.Tests\Olympiad.Review.Tests.csproj", "{5999698B-7F16-4A64-81FF-127372E5BEAF}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "BuildingBlocks", "BuildingBlocks", "{A54D076E-AB3C-481C-AF94-397C137B32FB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Olympiad.Persistence.Postgres", "..\..\building-blocks\Olympiad.Persistence.Postgres\Olympiad.Persistence.Postgres.csproj", "{21363130-A754-4D64-B998-CFB13929ED21}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -42,7 +46,12 @@ Global
 		{5999698B-7F16-4A64-81FF-127372E5BEAF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5999698B-7F16-4A64-81FF-127372E5BEAF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5999698B-7F16-4A64-81FF-127372E5BEAF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{21363130-A754-4D64-B998-CFB13929ED21}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{21363130-A754-4D64-B998-CFB13929ED21}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{21363130-A754-4D64-B998-CFB13929ED21}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{21363130-A754-4D64-B998-CFB13929ED21}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
+		{21363130-A754-4D64-B998-CFB13929ED21} = {A54D076E-AB3C-481C-AF94-397C137B32FB}
 	EndGlobalSection
 EndGlobal
