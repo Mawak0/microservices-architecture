@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
-import {writeFile} from 'node:fs/promises';
+import {writeFile,mkdir} from 'node:fs/promises';
 const require=createRequire(new URL('./package.json',import.meta.url)),QRCode=require('qrcode');
+await mkdir(new URL('../.demo-data/',import.meta.url),{recursive:true});
 const base='http://127.0.0.1:19180',results=[];
 async function req(p,m='GET',b,role='admin',token){const r=await fetch(base+p,{method:m,signal:AbortSignal.timeout(30000),headers:{'content-type':'application/json','x-demo-role':role,...(token?{'Assignment-Token':token}:{})},body:b===undefined?undefined:JSON.stringify(b)});const bytes=Buffer.from(await r.arrayBuffer());let data;try{data=JSON.parse(bytes);}catch{data=bytes;}return {status:r.status,data};}
 async function ok(p,m,b,role,token){const r=await req(p,m,b,role,token);assert.ok(r.status<300,JSON.stringify(r));return r.data;}

@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
-import {readFile,writeFile} from 'node:fs/promises';
+import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import QRCode from 'qrcode';
+await mkdir(new URL('../.demo-data/',import.meta.url),{recursive:true});
 const base='http://127.0.0.1:19180',file=new URL('../.demo-data/restart-proof.json',import.meta.url);
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 async function call(path,method='GET',body,role='admin') {
