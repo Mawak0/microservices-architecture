@@ -13,7 +13,20 @@ public sealed class PersistenceTests : IDisposable
         database.Initialize(); return database;
     }
     private static CommandIdentity Identity(string key = "key", string actor = "actor") => new(actor, "verdict", key, "hash");
-
+    [Fact]
+    public async Task RestartRetainsCheckLeaseFencingAndSuccessfulResponse()
+    {
+        var tx = new SqliteTransactions(Database()); var c = DomainTests.Check();
+        c.Claim("actor", "token", DomainTests.Now, TimeSpan.FromMinutes(1), false);
+        await tx.Run<CheckView>(null, s => { s.Checks.Save(c); return new(CheckView.From(c)); }, default);
+        var first = await new RecordVerdict(tx, new FixedClock()).Execute(Identity(), c.Id, "token", Verdict.Incorrect, default);
+        var restarted = new SqliteTransactions(Database());
+        var replay = await new RecordVerdict(restarted, new OfflineClock()).Execute(Identity(), c.Id, "token", Verdict.Incorrect, default);
+        Assert.Equal(first.Value.Revision, replay.Value.Revision); Assert.Equal(first.Value.History, replay.Value.History);
+        Assert.Equal("IDEMPOTENCY_KEY_REUSED", (await Assert.ThrowsAsync<DomainFailure>(() =>
+            restarted.Replay<CheckView>(Identity() with { Fingerprint = "changed-token" }, default))).Code);
+        Assert.Null(await restarted.Replay<CheckView>(Identity(actor: "other"), default));
+    }
     [Fact]
     public async Task TransactionRollsBackAggregateAndOutboxTogether()
     {

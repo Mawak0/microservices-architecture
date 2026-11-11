@@ -1,7 +1,7 @@
 {
   "service": "review",
-  "stage": 2,
+  "stage": 3,
   "total": 6,
   "sourceCommit": "3b08b7040ab19b52ba8c95dd99830557b67a3a5f",
-  "title": "Получение и сохранение принятых ответов"
+  "title": "Назначения и вердикты проверяющего"
 }
