@@ -11,9 +11,10 @@ internal sealed class PostgresPrintJobRepository(NpgsqlConnection connection, Np
     public async Task AddAsync(PrintJob job, CancellationToken cancellationToken)
     {
         await using var command = Command("""
-            INSERT INTO print_jobs(id,game_id,team_id,snapshot_json,status,created_order)
-            VALUES(@id,@game,@team,@snapshot,@status,(SELECT COALESCE(MAX(created_order),0)+1 FROM print_jobs))
-            """, ("@id", job.Id), ("@game", job.GameId), ("@team", job.TeamId), ("@snapshot", StoredSnapshot.Serialize(job.Snapshot)), ("@status", job.Status.ToString()));
+            INSERT INTO print_jobs(id,game_id,team_id,snapshot_json,status,artifact_url,error_code,error_message,processing_token,processing_expires_at,created_order)
+            VALUES(@id,@game,@team,@snapshot,@status,@artifact,@code,@message,@token,@expiry,(SELECT COALESCE(MAX(created_order),0)+1 FROM print_jobs))
+            """, ("@id", job.Id), ("@game", job.GameId), ("@team", job.TeamId), ("@snapshot", StoredSnapshot.Serialize(job.Snapshot)), ("@status", job.Status.ToString()),
+            ("@artifact",job.ArtifactUrl),("@code",job.Error?.Code),("@message",job.Error?.Message),("@token",job.ProcessingToken),("@expiry",job.ProcessingExpiresAt?.ToString("O")));
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
     public Task<PrintJob?> FindAsync(string id, CancellationToken cancellationToken) => FindByAsync("id=@id", [("@id", id)], cancellationToken);

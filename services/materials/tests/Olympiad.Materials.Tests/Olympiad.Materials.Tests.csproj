@@ -14,4 +14,8 @@
     <PackageReference Include="PdfPig" Version="0.1.11" />
   </ItemGroup>
   <ItemGroup><Compile Include="../../../../tests/support/DurableHttp.cs" Link="DurableHttp.cs" /></ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\tools\Olympiad.Storage.Maintenance\Olympiad.Storage.Maintenance.csproj" />
+  </ItemGroup>
+  <ItemGroup><Compile Include="../../../../tests/support/OfflineDatabase.cs" Link="OfflineDatabase.cs" /></ItemGroup>
 </Project>

@@ -27,6 +27,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Olympiad.Workflows.Domain",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Olympiad.Workflows.Tests", "..\..\tests\Olympiad.Workflows.Tests\Olympiad.Workflows.Tests.csproj", "{BAC341C4-A34A-435B-892C-2A9246F523B5}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Olympiad.Storage.Maintenance", "..\..\tools\Olympiad.Storage.Maintenance\Olympiad.Storage.Maintenance.csproj", "{A4E8A3BF-FA73-4086-8D97-A215783656DA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -80,6 +82,10 @@ Global
 		{BAC341C4-A34A-435B-892C-2A9246F523B5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BAC341C4-A34A-435B-892C-2A9246F523B5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BAC341C4-A34A-435B-892C-2A9246F523B5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A4E8A3BF-FA73-4086-8D97-A215783656DA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A4E8A3BF-FA73-4086-8D97-A215783656DA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A4E8A3BF-FA73-4086-8D97-A215783656DA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A4E8A3BF-FA73-4086-8D97-A215783656DA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{248D8214-DAC1-4701-B215-3A2868763CCD} = {50CC52F8-0504-483E-948B-30F40B68BECA}

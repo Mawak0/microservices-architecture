@@ -59,3 +59,8 @@ HTTP-контракты и события находятся в services/<servic
 предметные правила — в SERVICE.md и CONTRACTS.md.
 
 Настройка PostgreSQL, локальный запуск и тестовая база: [deploy/README.md](deploy/README.md).
+
+
+## Совместный запуск
+
+Три API, отдельные PostgreSQL-базы и VersityGW запускаются через [deploy/compose.yml](deploy/compose.yml). Настройки, резервное копирование и очистка файлов: [deploy/README.md](deploy/README.md). Живая демонстрация, запуск на Windows и сквозные проверки: [demo/README.md](demo/README.md). Сохранённые команды, контрольные точки и компенсации: [docs/architecture/durable-workflows.md](docs/architecture/durable-workflows.md).

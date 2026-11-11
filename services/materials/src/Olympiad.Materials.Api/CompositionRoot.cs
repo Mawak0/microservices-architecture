@@ -10,7 +10,7 @@ using Olympiad.Storage.S3;
 
 namespace Olympiad.Materials.Api;
 
-/// <summary>The only API file permitted to name infrastructure implementations.</summary>
+/// <summary>Binds application ports to concrete adapters at the composition boundary.</summary>
 internal static class CompositionRoot
 {
     public static async Task ConfigureAsync(WebApplicationBuilder builder, CancellationToken cancellationToken)
