@@ -70,7 +70,19 @@ public sealed class PersistenceTests : IDisposable
             s.Appeals.Save(Appeal.Open("second", first, "request")); return new(0);
         }, default));
     }
-
+    [Fact]
+    public async Task FailedDeliveryRetainsExactEventAcrossDispatcherRestart()
+    {
+        var database = Database(); var tx = new SqliteTransactions(database); var message = Event();
+        await tx.Run<int>(null, s => { s.Events.Add(message); return new(0); }, default);
+        var offline = new RecordingPublisher { Available = false };
+        await Assert.ThrowsAsync<DomainFailure>(() => new OutboxDispatcher(database, offline).Drain(default));
+        var online = new RecordingPublisher();
+        Assert.Equal(1, await new OutboxDispatcher(Database(), online).Drain(default));
+        Assert.Equal(message.EventId, Assert.Single(online.Messages).EventId);
+        Assert.Equal(message.EventId, Assert.Single(offline.Messages).EventId);
+        Assert.Equal(0, await new OutboxDispatcher(Database(), online).Drain(default));
+    }
     [Fact]
     public async Task DuplicateDeliveryUsesPersistedCaseWithoutExternalDependencies()
     {

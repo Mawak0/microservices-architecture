@@ -9,6 +9,9 @@
 
 Нужны .NET SDK 8 и Node.js 22+.
 
+`dotnet test` включает HTTP-приёмку настоящего API в процессе тестов; перед ним нужен `npm ci`.
+Методика измерения всех четырёх сборок и результат 96,90%: [COVERAGE.md](COVERAGE.md).
+
 ```sh
 npm ci
 npm test

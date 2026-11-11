@@ -1,7 +1,7 @@
 {
   "service": "review",
-  "stage": 5,
+  "stage": 6,
   "total": 6,
   "sourceCommit": "3b08b7040ab19b52ba8c95dd99830557b67a3a5f",
-  "title": "Рассмотрение апелляций и исправления"
+  "title": "Завершение проверок, HTTP API и CI"
 }

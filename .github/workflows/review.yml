@@ -1,0 +1,27 @@
+name: Contract documents and test harness
+on: [push, pull_request]
+permissions:
+  contents: read
+defaults:
+  run:
+    working-directory: services/review
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: services/review/package-lock.json
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - run: npm ci
+      - run: npm test
+      - run: node --check tests/acceptance.test.mjs
+      - run: node validation/audit-architecture.mjs .
+      - run: npm exec --yes --package=@redocly/cli@2.62.1 -- redocly lint contracts/openapi.json --extends minimal
+      - run: dotnet test Olympiad.Review.sln --configuration Release
+      - run: npm run test:service
