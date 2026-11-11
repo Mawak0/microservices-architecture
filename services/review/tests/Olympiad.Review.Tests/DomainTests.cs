@@ -34,10 +34,24 @@ public sealed class DomainTests
 
 
 
+    [Fact]
+    public void QuotaReductionNeverErasesAlreadyConsumedUsage()
+    {
+        var quota = new GameAppealQuota("game", 2); quota.Use(); quota.Use(); quota.SetLimit(1);
+        Assert.Equal(2, quota.Used); Assert.Equal(0, quota.Remaining);
+        Code("APPEAL_QUOTA_EXHAUSTED", quota.Use); quota.Return(); Assert.Equal(0, quota.Remaining);
+        quota.Return(); Assert.Equal(1, quota.Remaining);
+    }
 
 
-
-
+    [Fact]
+    public void AppealEligibilityUsesCapabilitiesNeverGameNames()
+    {
+        var eligibility = new AppealEligibility(); var c = Checked();
+        eligibility.Require(Game(appeals: true) with { AppealDeadline = Now.AddMinutes(1) }, c, Now);
+        Code("APPEAL_NOT_ALLOWED", () => eligibility.Require(Game(), c, Now));
+        Code("APPEAL_DEADLINE_PASSED", () => eligibility.Require(Game(appeals: true), c, Now));
+    }
     internal static AnswerCheck Checked()
     {
         var c = Check(); c.Claim("actor", "first", Now, TimeSpan.FromMinutes(1), false);
