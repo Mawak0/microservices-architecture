@@ -1,7 +1,7 @@
 {
   "service": "intake",
-  "stage": 3,
+  "stage": 4,
   "total": 6,
   "sourceCommit": "8a4f89479232fdfb801758a114a96849e14870ea",
-  "title": "Сохранение принятого ответа"
+  "title": "Сроки и завершение приёма"
 }
