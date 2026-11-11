@@ -103,7 +103,8 @@ public sealed class HttpWorkflowTests
     [Fact]
     public async Task PermanentFailureCompensatesBeforePayloadIsRemoved()
     {
-        await using var host = await Host.Start();
+        var clock=new ManualClock();
+        await using var host = await Host.Start(clock:clock);
         host.State.Reject = true;
         using var response = await host.Send("/answers/task", "{\"value\":42}", "reject");
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
@@ -113,9 +114,11 @@ public sealed class HttpWorkflowTests
         var coordinator = host.App.Services.GetRequiredService<Coordinator>();
         host.State.CleanupFails = true;
         await coordinator.RunAsync(id, "cleanup1", default);
-        Assert.NotNull((await store.FindAsync(id, "observer", default))!.Invocation);
+        var retry=await store.FindAsync(id,"observer",default);
+        Assert.NotNull(retry!.Invocation);
+        Assert.False(await coordinator.RunAsync(id,"too-early",default));
         host.State.CleanupFails = false;
-        await Task.Delay(150);
+        clock.UtcNow=retry.NextAttempt;
         await coordinator.RunAsync(id, "cleanup2", default);
         var failed = await store.FindAsync(id, "observer", default);
         Assert.Equal(ProcessStatus.Failed, failed!.Status);
@@ -124,6 +127,7 @@ public sealed class HttpWorkflowTests
     }
 
     public sealed record Answer(int Value);
+    private sealed class ManualClock : IProcessClock { public DateTimeOffset UtcNow {get;set;}=DateTimeOffset.UtcNow; }
     private sealed class Rejected : Exception;
     private sealed class State
     {
@@ -137,7 +141,7 @@ public sealed class HttpWorkflowTests
         public WebApplication App { get; } = app;
         public HttpClient Client { get; } = client;
         public State State { get; } = state;
-        public static async Task<Host> Start(string? connection = null, bool worker = false)
+        public static async Task<Host> Start(string? connection = null, bool worker = false,IProcessClock? clock=null)
         {
             connection ??= TestDatabase.For(Guid.NewGuid().ToString());
             await using (var db = new NpgsqlConnection(connection))
@@ -159,6 +163,7 @@ public sealed class HttpWorkflowTests
                 Compensate = (_, _) => { state.CleanupCalls++; return state.CleanupFails ? Task.FromException(new IOException()) : Task.CompletedTask; }
             });
             if (!worker) builder.Services.RemoveAll<IHostedService>();
+            if(clock is not null) builder.Services.AddSingleton(clock);
             var app = builder.Build(); app.UseRouting();
             app.Use(async (c, next) =>
             {
