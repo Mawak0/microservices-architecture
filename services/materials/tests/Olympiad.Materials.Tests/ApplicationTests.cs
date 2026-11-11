@@ -49,7 +49,16 @@ public sealed class ApplicationTests
         var repeat = await handler.ExecuteAsync(Sample.Admin(), command, default);
         Assert.Equal(first.Id, repeat.Id); Assert.Equal("layout/v1", repeat.Snapshot.Template.Key);
     }
-
+    [Fact] public async Task OutboxRetainsStableIdentityAcrossTransientFailure()
+    {
+        var store = new MemoryTransactions(); var publisher = new RecordingPublisher { Unavailable = true };
+        var message = new MaterialEvent("event", "KitPrepared", DateTimeOffset.UtcNow, "kit", "game", "team", KitId: "kit");
+        await store.ExecuteAsync(async (s, ct) => { await s.Outbox.AddAsync(message, ct); return true; }, default);
+        var processor = new PublishOutbox(store, publisher);
+        await Assert.ThrowsAsync<DependencyUnavailableException>(() => processor.ExecuteAsync(default));
+        publisher.Unavailable = false; Assert.Equal(1, await processor.ExecuteAsync(default)); Assert.Equal(0, await processor.ExecuteAsync(default));
+        Assert.Equal(publisher.Attempts[0], publisher.Attempts[1]);
+    }
     [Fact] public async Task RealRegistryAndSignatureAreBothRequired()
     {
         var tokens = Tokens(); var transactions = new MemoryTransactions(); var dependency = new StubDependencies();

@@ -46,3 +46,16 @@ public sealed class ProcessPrintJobs(IMaterialsTransactions transactions, IPdfRe
     }
 }
 
+public sealed class PublishOutbox(IMaterialsTransactions transactions, IEventPublisher publisher)
+{
+    public async Task<int> ExecuteAsync(CancellationToken cancellationToken)
+    {
+        var pending = await transactions.ExecuteAsync((s, ct) => s.Outbox.GetPendingAsync(100, ct), cancellationToken);
+        foreach (var message in pending)
+        {
+            await publisher.PublishAsync(message, cancellationToken);
+            await transactions.ExecuteAsync(async (s, ct) => { await s.Outbox.MarkDeliveredAsync(message.EventId, ct); return true; }, cancellationToken);
+        }
+        return pending.Count;
+    }
+}

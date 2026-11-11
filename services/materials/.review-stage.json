@@ -1,7 +1,7 @@
 {
   "service": "materials",
-  "stage": 5,
+  "stage": 6,
   "total": 6,
   "sourceCommit": "a4f7f76f81f7a1d086dfa813064fa37bbd785acd",
-  "title": "HTTP API и права пользователей"
+  "title": "Фоновая обработка, восстановление и CI"
 }

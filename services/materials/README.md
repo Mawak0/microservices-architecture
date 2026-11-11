@@ -19,6 +19,9 @@ Domain ← Application ← Infrastructure; API связывает реализа
 в `PDF_RENDER_COMMAND`). На Linux установите `fonts-dejavu-core poppler-utils`.
 На Windows используется установленный Arial; файл шрифта не распространяется.
 
+`dotnet test Olympiad.Materials.sln` включает HTTP-приёмку настоящего API в процессе тестов;
+перед ним нужен `npm ci`. Покрытие всех четырёх сборок — 93,42%; методика: [COVERAGE.md](COVERAGE.md).
+
 ```sh
 npm ci
 npm test
