@@ -1,0 +1,21 @@
+{
+  "name": "olympiad-service-contract",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/documents.test.mjs tests/harness.test.mjs",
+    "fixtures": "node test-support/fixtures.mjs",
+    "test:acceptance": "node --test --test-concurrency=1 tests/acceptance.test.mjs",
+    "test:service": "node scripts/run-acceptance.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
+    "jsqr": "1.4.0",
+    "pngjs": "7.0.0",
+    "qrcode": "1.5.4"
+  }
+}
