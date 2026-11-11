@@ -1,0 +1,686 @@
+{
+  "openapi": "3.1.0",
+  "servers": [
+    {
+      "url": "/",
+      "description": "Адрес экземпляра задаётся при развёртывании"
+    }
+  ],
+  "info": {
+    "title": "Olympiad Materials Service",
+    "version": "0.3.0",
+    "description": "Контракт реализации сервиса материалов .NET 8. Общие правила — CONTRACTS.md; запуск и проверки — README.md."
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/kits": {
+      "post": {
+        "operationId": "prepareKit",
+        "summary": "Подготовить комплект по настройкам игры",
+        "x-roles": [
+          "admin"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KitRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Идемпотентный повтор",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Kit"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Комплект подготовлен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Kit"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/kits/{id}": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "getKit",
+        "summary": "Прочитать комплект команды",
+        "x-roles": [
+          "admin",
+          "observer"
+        ],
+        "responses": {
+          "200": {
+            "description": "Комплект",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Kit"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/blanks": {
+      "post": {
+        "operationId": "issueBlanks",
+        "summary": "Выпустить новые бланки",
+        "x-roles": [
+          "admin"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IssueBlanks"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Идемпотентный повтор",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlankBatch"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Новые бланки",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlankBatch"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "description": "Задача назначается до печати. Модификатор проверяется по capabilities.modifiersAllowed профиля игры, а не по названию системы. Новая запись библиотеки с исправленным эталоном — другой taskId; без назначения игре она не допускается (TASK_NOT_IN_GAME)."
+      }
+    },
+    "/blanks/{id}": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "getBlank",
+        "summary": "Прочитать зарегистрированный бланк",
+        "x-roles": [
+          "admin",
+          "observer",
+          "integration"
+        ],
+        "responses": {
+          "200": {
+            "description": "Зарегистрированный бланк",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blank"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/blank-verifications": {
+      "post": {
+        "operationId": "verifyBlank",
+        "summary": "Проверить QR по доверенному реестру",
+        "x-roles": [
+          "admin",
+          "observer",
+          "integration"
+        ],
+        "description": "Чтение, не сдача бланка. Невалидный/поддельный QR — 422 INVALID_QR. Идемпотентность не нужна: операция не изменяет состояние.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "qrToken"
+                ],
+                "properties": {
+                  "qrToken": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Подлинный бланк",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Blank"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/print-jobs": {
+      "post": {
+        "operationId": "createPrintJob",
+        "summary": "Сформировать единый PDF выбранных материалов",
+        "x-roles": [
+          "admin",
+          "observer"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrintRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Идемпотентный повтор",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrintJob"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Задание принято",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrintJob"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "description": "Шаблон берётся из materialSettings.templateKey, параметры фиксируются в задании печати. Добавление нового типа игры не меняет протокол/ядро: зарегистрированные шаблоны и возможности задаются данными."
+      }
+    },
+    "/print-jobs/{id}": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "getPrintJob",
+        "summary": "Прочитать состояние подготовки PDF",
+        "x-roles": [
+          "admin",
+          "observer"
+        ],
+        "responses": {
+          "200": {
+            "description": "Состояние и manifest",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrintJob"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/print-jobs/{id}/artifact": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "downloadPdf",
+        "summary": "Скачать готовый PDF",
+        "x-roles": [
+          "admin",
+          "observer"
+        ],
+        "responses": {
+          "200": {
+            "description": "PDF заданий и/или бланков",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "parameters": {
+      "IdempotencyKey": {
+        "in": "header",
+        "name": "Idempotency-Key",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "responses": {
+      "Error": {
+        "description": "401/403/404/409/422/503; коды в SERVICE.md",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "./common.json#/$defs/Error"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "KitRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "gameId",
+          "teamId"
+        ],
+        "properties": {
+          "gameId": {
+            "type": "string"
+          },
+          "teamId": {
+            "type": "string"
+          }
+        }
+      },
+      "Kit": {
+        "type": "object",
+        "required": [
+          "id",
+          "gameId",
+          "teamId",
+          "answerBlankCount",
+          "taskCardCount",
+          "taskCardsShared",
+          "blankIds",
+          "templateKey"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "gameId": {
+            "type": "string"
+          },
+          "teamId": {
+            "type": "string"
+          },
+          "answerBlankCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "taskCardCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "taskCardsShared": {
+            "type": "boolean"
+          },
+          "blankIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "uniqueItems": true
+          },
+          "templateKey": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "IssueBlanks": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "gameId",
+          "teamId",
+          "count",
+          "taskId"
+        ],
+        "properties": {
+          "gameId": {
+            "type": "string"
+          },
+          "teamId": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "modifier": {
+            "$ref": "./common.json#/$defs/Modifier"
+          },
+          "taskId": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Задача назначена игре; все бланки партии заранее привязываются к ней. Номер выводится из назначения задачи игре. taskId неизменяем: исправление эталона создаёт новую задачу, не меняя уже выпущенные бланки. Во время игры замена назначенных задач запрещена."
+          }
+        }
+      },
+      "Blank": {
+        "type": "object",
+        "required": [
+          "id",
+          "number",
+          "gameId",
+          "teamId",
+          "qrToken",
+          "modifier",
+          "taskId",
+          "taskNumber"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "number": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "gameId": {
+            "type": "string"
+          },
+          "teamId": {
+            "type": "string"
+          },
+          "qrToken": {
+            "type": "string",
+            "minLength": 1
+          },
+          "modifier": {
+            "oneOf": [
+              {
+                "$ref": "./common.json#/$defs/Modifier"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "taskId": {
+            "type": "string",
+            "minLength": 1,
+            "description": "ID исходной неизменяемой задачи. Не разрешается переназначать существующий бланк на новую задачу или последний эталон."
+          },
+          "taskNumber": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "BlankBatch": {
+        "type": "object",
+        "required": [
+          "blanks"
+        ],
+        "properties": {
+          "blanks": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/components/schemas/Blank"
+            }
+          }
+        }
+      },
+      "PrintRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "gameId",
+          "blankIds",
+          "taskIds"
+        ],
+        "description": "Хотя бы одна из коллекций непуста. Все материалы принадлежат выбранной игре. Если teamId задан, бланки только этой команды. Без teamId можно объединить материалы команд игры в один PDF. Печать всегда использует уже выпущенные бланки, в том числе для наблюдателя.",
+        "anyOf": [
+          {
+            "properties": {
+              "blankIds": {
+                "minItems": 1
+              }
+            }
+          },
+          {
+            "properties": {
+              "taskIds": {
+                "minItems": 1
+              }
+            }
+          }
+        ],
+        "properties": {
+          "gameId": {
+            "type": "string"
+          },
+          "teamId": {
+            "type": "string"
+          },
+          "blankIds": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string"
+            }
+          },
+          "taskIds": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "PrintJob": {
+        "type": "object",
+        "required": [
+          "id",
+          "gameId",
+          "teamId",
+          "status",
+          "manifest",
+          "templateKey",
+          "templateParameters"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "gameId": {
+            "type": "string"
+          },
+          "teamId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "running",
+              "completed",
+              "failed"
+            ]
+          },
+          "artifactUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "error": {
+            "oneOf": [
+              {
+                "$ref": "./common.json#/$defs/Error"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "manifest": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind",
+                "id"
+              ],
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "answer-blank",
+                    "task-statement"
+                  ]
+                },
+                "id": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "templateKey": {
+            "type": "string",
+            "minLength": 1
+          },
+          "templateParameters": {
+            "type": "object",
+            "additionalProperties": {
+              "type": [
+                "string",
+                "number",
+                "boolean",
+                "null"
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}
