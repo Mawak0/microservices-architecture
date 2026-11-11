@@ -38,14 +38,16 @@ internal sealed class PostgresPrintJobRepository(NpgsqlConnection connection, Np
             ("@message", job.Error?.Message), ("@token", job.ProcessingToken), ("@expiry", job.ProcessingExpiresAt?.ToString("O")));
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
-    public async Task StoreArtifactAsync(string jobId, byte[] artifact, CancellationToken cancellationToken)
+    public async Task StoreArtifactAsync(string jobId, PrintArtifact artifact, CancellationToken cancellationToken)
     {
-        await using var command = Command("INSERT INTO pdf_artifacts VALUES(@id,@bytes) ON CONFLICT(print_job_id) DO UPDATE SET content=@bytes", ("@id", jobId), ("@bytes", artifact));
+        await using var command = Command("INSERT INTO pdf_artifacts VALUES(@id,@key,@type,@size,@sha) ON CONFLICT(print_job_id) DO UPDATE SET object_key=@key,content_type=@type,size=@size,sha256=@sha",
+            ("@id", jobId), ("@key", artifact.Key), ("@type", artifact.ContentType), ("@size", artifact.Size), ("@sha", artifact.Sha256));
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
-    public async Task<byte[]?> FindArtifactAsync(string jobId, CancellationToken cancellationToken)
+    public async Task<PrintArtifact?> FindArtifactAsync(string jobId, CancellationToken cancellationToken)
     {
-        await using var command = Command("SELECT content FROM pdf_artifacts WHERE print_job_id=@id", ("@id", jobId));
-        return await command.ExecuteScalarAsync(cancellationToken) as byte[];
+        await using var command = Command("SELECT object_key,content_type,size,sha256 FROM pdf_artifacts WHERE print_job_id=@id", ("@id", jobId));
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        return await reader.ReadAsync(cancellationToken) ? new(reader.GetString(0), reader.GetString(1), reader.GetInt64(2), reader.GetString(3)) : null;
     }
 }

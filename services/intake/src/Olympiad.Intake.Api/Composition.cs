@@ -3,6 +3,7 @@ using Olympiad.Intake.Application;
 using Olympiad.Intake.Infrastructure.Http;
 using Olympiad.Intake.Infrastructure.Images;
 using Olympiad.Intake.Infrastructure.Persistence;
+using Olympiad.Storage.S3;
 
 namespace Olympiad.Intake.Api;
 
@@ -33,7 +34,22 @@ internal static class Composition
         AddDependency<ITeamAdmissionGateway>("Teams", client => new HttpTeamAdmissionGateway(client));
         AddDependency<IBlankRegistry>("Materials", client => new HttpBlankRegistry(client));
         AddDependency<IIdentityProvider>("Identity", client => new HttpIdentityProvider(client));
-        AddDependency<IImageStorage>("Images", client => new HttpImageStorage(client));
+        if (builder.Environment.IsEnvironment("ContractTests") || builder.Environment.IsEnvironment("Testing"))
+        {
+            // The existing contract fixture injects HTTP failures independently from the S3 integration suite.
+            AddDependency<IImageStorage>("Images", client => new HttpImageStorage(client));
+            services.AddSingleton<IImageReader>(provider => (IImageReader)provider.GetRequiredService<IImageStorage>());
+        }
+        else
+        {
+            string Setting(string key) => builder.Configuration["S3:" + key] ?? throw new InvalidOperationException("Configure S3:" + key);
+            var client = new S3Options(Setting("Endpoint"), Setting("Region"), Setting("AccessKey"), Setting("SecretKey"), "answer-images").CreateClient();
+            services.AddSingleton(client);
+            services.AddSingleton(new S3Objects(client, "answer-images"));
+            services.AddSingleton<S3ImageStorage>();
+            services.AddSingleton<IImageStorage>(provider => provider.GetRequiredService<S3ImageStorage>());
+            services.AddSingleton<IImageReader>(provider => provider.GetRequiredService<S3ImageStorage>());
+        }
         AddDependency<IEventPublisher>("Events", client => new HttpEventPublisher(client));
         if (!string.IsNullOrWhiteSpace(builder.Configuration["Dependencies:ClockBaseUrl"]))
         {
@@ -49,7 +65,7 @@ internal static class Composition
         services.AddSingleton<IImageQrDecoder, SkiaQrDecoder>();
         services.AddSingleton<AcceptBlank>(); services.AddSingleton<SubmissionFinalizer>();
         services.AddSingleton<SynchronizeIntake>(); services.AddSingleton<CloseIntake>();
-        services.AddSingleton<GetReceipt>(); services.AddSingleton<GetIntakeSession>();
+        services.AddSingleton<GetReceipt>(); services.AddSingleton<GetIntakeSession>(); services.AddSingleton<GetImage>();
         services.AddSingleton<DeliverPendingEvent>(); services.AddSingleton<RecoverPendingSubmission>();
         services.AddHostedService<OutboxWorker>(); services.AddHostedService<SubmissionRecoveryWorker>();
         builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = 24 * 1024 * 1024);

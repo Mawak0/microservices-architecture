@@ -2,7 +2,7 @@ using Olympiad.Materials.Domain;
 
 namespace Olympiad.Materials.Application;
 
-public sealed class ProcessPrintJobs(IMaterialsTransactions transactions, IPdfRenderer renderer, IClock clock)
+public sealed class ProcessPrintJobs(IMaterialsTransactions transactions, IPdfRenderer renderer, IClock clock, IPrintArtifactStorage artifacts)
 {
     public async Task<bool> ExecuteNextAsync(CancellationToken cancellationToken)
     {
@@ -29,14 +29,16 @@ public sealed class ProcessPrintJobs(IMaterialsTransactions transactions, IPdfRe
             }, cancellationToken);
             return true;
         }
+        // Upload outside the local database transaction. A stale worker gets its own immutable object key.
+        var artifact = await artifacts.SaveAsync(job.Id, token, bytes, cancellationToken);
         var completedAt = await clock.UtcNowAsync(cancellationToken);
         await transactions.ExecuteAsync(async (s, ct) =>
         {
             var current = await s.PrintJobs.FindAsync(job.Id, ct) ?? throw new InvalidOperationException("Missing print job.");
-            if (current.ProcessingToken != token) return false;
+            if (current.ProcessingToken != token || current.ProcessingExpiresAt <= completedAt) return false;
             var artifactUrl = $"/print-jobs/{job.Id}/artifact";
             current.Complete(token, artifactUrl);
-            await s.PrintJobs.StoreArtifactAsync(job.Id, bytes, ct);
+            await s.PrintJobs.StoreArtifactAsync(job.Id, artifact, ct);
             await s.PrintJobs.SaveAsync(current, ct);
             await s.Outbox.AddAsync(new(Guid.NewGuid().ToString(), "PrintPdfPrepared", completedAt, current.Id,
                 current.GameId, current.TeamId, PrintJobId: current.Id, ArtifactUrl: artifactUrl, TemplateKey: current.Snapshot.Template.Key), ct);

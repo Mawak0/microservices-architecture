@@ -50,8 +50,15 @@ public sealed class HttpIdentityProvider(HttpClient client) : IIdentityProvider
     private sealed record IdentityDocument(bool Active, string UserId, string[] Roles);
 }
 
-public sealed class HttpImageStorage(HttpClient client) : IImageStorage
+public sealed class HttpImageStorage(HttpClient client) : IImageStorage, IImageReader
 {
+    public Task<byte[]> ReadAsync(ImageReference image, CancellationToken ct)
+    {
+        if (!Uri.TryCreate(client.BaseAddress, image.DownloadRef, out var address) ||
+            address.Authority != client.BaseAddress!.Authority)
+            throw new IntakeException(IntakeError.StorageUnavailable, "Image dependency returned an invalid reference.");
+        return client.GetByteArrayAsync(address, ct);
+    }
     private readonly DependencyHttp http = new(client);
     public async Task<string> SaveAsync(string receiptId, string blankId, ReadOnlyMemory<byte> image, string mediaType, CancellationToken ct)
     {

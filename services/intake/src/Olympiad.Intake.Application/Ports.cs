@@ -12,6 +12,8 @@ public interface IImageStorage
     Task<string> SaveAsync(string receiptId, string blankId, ReadOnlyMemory<byte> image,
         string mediaType, CancellationToken cancellationToken);
 }
+public sealed record ImageReference(string Key, string ContentType, long Size, string Sha256, string? DownloadRef = null);
+public interface IImageReader { Task<byte[]> ReadAsync(ImageReference image, CancellationToken cancellationToken); }
 public interface IEventPublisher { Task PublishAsync(IntakeEvent message, CancellationToken cancellationToken); }
 public sealed record Actor(string UserId, IReadOnlySet<string> Roles);
 public interface IIdentityProvider { Task<Actor?> IntrospectAsync(string token, CancellationToken cancellationToken); }
@@ -40,6 +42,7 @@ public interface ISessionRepository
 }
 public interface IReceiptRepository
 {
+    Task<ImageReference?> ImageAsync(string receiptId, CancellationToken cancellationToken);
     Task<Receipt?> FindAsync(string receiptId, CancellationToken cancellationToken);
     Task<bool> ExistsForBlankAsync(string blankId, CancellationToken cancellationToken);
     Task<IReadOnlyList<string>> ListIdsAsync(string gameId, CancellationToken cancellationToken);

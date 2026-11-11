@@ -63,7 +63,7 @@ public sealed class ApplicationTests
     {
         var tokens = Tokens(); var transactions = new MemoryTransactions(); var dependency = new StubDependencies();
         var issued = await new IssueBlanks(dependency, dependency, transactions, tokens, dependency).ExecuteAsync(Sample.Admin(), new("game", "team", "task-1", 1, null), default);
-        var queries = new MaterialQueries(transactions, tokens);
+        var queries = new MaterialQueries(transactions, tokens, new MemoryArtifacts());
         Assert.Equal(issued[0].Id, (await queries.VerifyAsync(Sample.Admin().Actor, issued[0].QrToken, default)).Id);
         var unregistered = tokens.Protect(new("missing", 99, "game", "team", "task-1", "1", null));
         Assert.Equal("INVALID_QR", (await Assert.ThrowsAsync<DomainException>(() => queries.VerifyAsync(Sample.Admin().Actor, unregistered, default))).Code);
