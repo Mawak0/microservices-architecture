@@ -6,6 +6,7 @@ using Olympiad.Materials.Infrastructure.Persistence;
 using Olympiad.Materials.Infrastructure.Security;
 using Olympiad.Materials.Infrastructure.Templates;
 using System.Net.Http.Headers;
+using Olympiad.Storage.S3;
 
 namespace Olympiad.Materials.Api;
 
@@ -24,6 +25,13 @@ internal static class CompositionRoot
         builder.Services.AddSingleton<IMaterialsTransactions, PostgresMaterialsTransactions>();
         builder.Services.AddSingleton<IBlankTokenProtector>(new HmacBlankTokenProtector(key));
         builder.Services.AddSingleton<IPdfRenderer, PdfSharpMaterialRenderer>();
+        string S3Setting(string key) => config["S3:" + key] ?? throw new InvalidOperationException("Configure S3:" + key);
+        var s3Client = new S3Options(S3Setting("Endpoint"), S3Setting("Region"), S3Setting("AccessKey"), S3Setting("SecretKey"), "print-materials").CreateClient();
+        builder.Services.AddSingleton(s3Client);
+        var objects = new S3Objects(s3Client, "print-materials");
+        await objects.InitializeAsync(cancellationToken);
+        builder.Services.AddSingleton(objects);
+        builder.Services.AddSingleton<IPrintArtifactStorage, S3PrintArtifacts>();
         DependencyClient Dependency(string specific)
         {
             var baseUrl = config[$"Dependencies:{specific}BaseUrl"] ?? config["Dependencies:BaseUrl"];

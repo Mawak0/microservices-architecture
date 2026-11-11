@@ -43,6 +43,11 @@ internal static class Endpoints
         app.MapGet("/receipts/{id}", async (string id, HttpContext context, GetReceipt useCase) =>
             Results.Ok(ReceiptResponse.From(await useCase.ExecuteAsync(id, context.RequestAborted))))
             .WithMetadata(new RequiredRoles("observer", "checker", "integration"));
+        app.MapGet("/receipts/{id}/image", async (string id, HttpContext context, GetImage useCase) =>
+        {
+            var image = await useCase.ExecuteAsync(id, context.RequestAborted);
+            return Results.File(image.Bytes, image.ContentType);
+        }).WithMetadata(new RequiredRoles("observer", "checker", "integration"));
     }
     private static async Task<T> ReadAsync<T>(HttpContext context) => await JsonSerializer.DeserializeAsync<T>(context.Request.Body, InputJson, context.RequestAborted)
         ?? throw new IntakeException(IntakeError.ValidationError, "A request body is required.");

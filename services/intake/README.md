@@ -85,3 +85,5 @@ dotnet run --project src/Olympiad.Intake.Api
 Соседние ветки: contracts/materials-service и contracts/review-service.
 Все три backend-реализации используют один стек; их external gateways позволяют
 подключить отдельные экземпляры сервисов вместо заглушек.
+
+Фотографии и PDF хранятся в закрытом S3. Настройки S3, проверка файлов и резервное копирование: [deploy/README.md](../../deploy/README.md).

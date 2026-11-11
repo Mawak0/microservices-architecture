@@ -50,7 +50,7 @@ internal sealed class MemoryTransactions : IMaterialsTransactions, IMaterialsSes
     private Dictionary<string, AnswerBlank> blanks = [];
     private Dictionary<string, TeamKit> kits = [];
     private Dictionary<string, PrintJob> jobs = [];
-    private Dictionary<string, byte[]> artifacts = [];
+    private Dictionary<string, PrintArtifact> artifacts = [];
     private Dictionary<(string Scope, string Key), IdempotencyRecord> replays = [];
     private Dictionary<string, MaterialEvent> pending = [];
     public IBlankRepository Blanks => this;
@@ -61,7 +61,7 @@ internal sealed class MemoryTransactions : IMaterialsTransactions, IMaterialsSes
     public async Task<T> ExecuteAsync<T>(Func<IMaterialsSession, CancellationToken, Task<T>> action, CancellationToken cancellationToken)
     {
         var saved = (sequence, blanks: new Dictionary<string, AnswerBlank>(blanks), kits: new Dictionary<string, TeamKit>(kits),
-            jobs: jobs.ToDictionary(p => p.Key, p => Clone(p.Value)), artifacts: new Dictionary<string, byte[]>(artifacts),
+            jobs: jobs.ToDictionary(p => p.Key, p => Clone(p.Value)), artifacts: new Dictionary<string, PrintArtifact>(artifacts),
             replays: new Dictionary<(string, string), IdempotencyRecord>(replays), pending: new Dictionary<string, MaterialEvent>(pending));
         try { return await action(this, cancellationToken); }
         catch { (sequence, blanks, kits, jobs, artifacts, replays, pending) = saved; throw; }
@@ -86,11 +86,24 @@ internal sealed class MemoryTransactions : IMaterialsTransactions, IMaterialsSes
         return Task.FromResult(job is null ? null : Clone(job));
     }
     public Task SaveAsync(PrintJob job, CancellationToken cancellationToken) { jobs[job.Id] = Clone(job); return Task.CompletedTask; }
-    public Task StoreArtifactAsync(string jobId, byte[] artifact, CancellationToken cancellationToken) { artifacts[jobId] = artifact.ToArray(); return Task.CompletedTask; }
-    public Task<byte[]?> FindArtifactAsync(string jobId, CancellationToken cancellationToken) => Task.FromResult(artifacts.GetValueOrDefault(jobId)?.ToArray());
+    public Task StoreArtifactAsync(string jobId, PrintArtifact artifact, CancellationToken cancellationToken) { artifacts[jobId] = artifact; return Task.CompletedTask; }
+    public Task<PrintArtifact?> FindArtifactAsync(string jobId, CancellationToken cancellationToken) => Task.FromResult(artifacts.GetValueOrDefault(jobId));
     public Task<IdempotencyRecord?> FindAsync(string scope, string key, CancellationToken cancellationToken) => Task.FromResult(replays.GetValueOrDefault((scope, key)));
     public Task AddAsync(IdempotencyRecord record, CancellationToken cancellationToken) { replays.Add((record.Scope, record.Key), record); return Task.CompletedTask; }
     public Task AddAsync(MaterialEvent message, CancellationToken cancellationToken) { pending.Add(message.EventId, message); return Task.CompletedTask; }
     public Task<IReadOnlyList<MaterialEvent>> GetPendingAsync(int limit, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<MaterialEvent>>(pending.Values.Take(limit).ToArray());
     public Task MarkDeliveredAsync(string eventId, CancellationToken cancellationToken) { pending.Remove(eventId); return Task.CompletedTask; }
+}
+
+internal sealed class MemoryArtifacts : IPrintArtifactStorage
+{
+    private readonly Dictionary<string, byte[]> content = [];
+    public bool Unavailable { get; set; }
+    public Task<PrintArtifact> SaveAsync(string jobId, string token, byte[] bytes, CancellationToken ct)
+    {
+        if (Unavailable) throw new DependencyUnavailableException("Storage unavailable");
+        var key=jobId+":"+token; content[key]=bytes.ToArray();
+        return Task.FromResult(new PrintArtifact(key,"application/pdf",bytes.Length,"checksum"));
+    }
+    public Task<byte[]> ReadAsync(PrintArtifact artifact,CancellationToken ct) => Task.FromResult(content[artifact.Key]);
 }

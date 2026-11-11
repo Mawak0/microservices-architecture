@@ -20,7 +20,8 @@ status TEXT NOT NULL, artifact_url TEXT, error_code TEXT, error_message TEXT,
 processing_token TEXT, processing_expires_at TEXT, created_order INTEGER NOT NULL);
 CREATE INDEX IF NOT EXISTS print_jobs_status ON print_jobs(status,created_order);
 CREATE TABLE IF NOT EXISTS pdf_artifacts (
-print_job_id TEXT PRIMARY KEY REFERENCES print_jobs(id), content BYTEA NOT NULL);
+print_job_id TEXT PRIMARY KEY REFERENCES print_jobs(id), object_key TEXT NOT NULL UNIQUE,
+content_type TEXT NOT NULL, size BIGINT NOT NULL CHECK(size>0), sha256 TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS idempotency (
 scope TEXT NOT NULL, key TEXT NOT NULL, fingerprint TEXT NOT NULL, resource_ids_json TEXT NOT NULL,
 PRIMARY KEY(scope,key));

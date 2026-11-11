@@ -27,7 +27,20 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U olympiad_test -d olympiad_tests"
           --health-interval 5s --health-timeout 5s --health-retries 12
+      s3:
+        image: versity/versitygw:v1.11.0
+        env:
+          ROOT_ACCESS_KEY_ID: olympiad-test
+          ROOT_SECRET_ACCESS_KEY: local-test-storage-only
+          VGW_BACKEND: posix
+          VGW_BACKEND_ARGS: /data
+          VGW_FSYNC: 'true'
+        ports: ['17070:7070']
+        volumes: ['/data']
     env:
+      TEST_S3_ENDPOINT: http://127.0.0.1:17070
+      TEST_S3_ACCESS_KEY: olympiad-test
+      TEST_S3_SECRET_KEY: local-test-storage-only
       TEST_POSTGRES_CONNECTION: 'Host=127.0.0.1;Port=5432;Database=olympiad_tests;Username=olympiad_test;Password=local-ci-only'
     steps:
       - uses: actions/checkout@v4

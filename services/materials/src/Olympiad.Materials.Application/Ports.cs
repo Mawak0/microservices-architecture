@@ -13,6 +13,12 @@ public interface IBlankTokenProtector
 }
 public interface IClock { Task<DateTimeOffset> UtcNowAsync(CancellationToken cancellationToken); }
 public interface IPdfRenderer { Task<byte[]> RenderAsync(PrintSnapshot snapshot, CancellationToken cancellationToken); }
+public sealed record PrintArtifact(string Key, string ContentType, long Size, string Sha256);
+public interface IPrintArtifactStorage
+{
+    Task<PrintArtifact> SaveAsync(string jobId, string workerToken, byte[] bytes, CancellationToken cancellationToken);
+    Task<byte[]> ReadAsync(PrintArtifact artifact, CancellationToken cancellationToken);
+}
 
 public interface IBlankRepository
 {
@@ -33,8 +39,8 @@ public interface IPrintJobRepository
     Task<PrintJob?> FindAsync(string id, CancellationToken cancellationToken);
     Task<PrintJob?> FindNextPendingAsync(DateTimeOffset now, CancellationToken cancellationToken);
     Task SaveAsync(PrintJob job, CancellationToken cancellationToken);
-    Task StoreArtifactAsync(string jobId, byte[] artifact, CancellationToken cancellationToken);
-    Task<byte[]?> FindArtifactAsync(string jobId, CancellationToken cancellationToken);
+    Task StoreArtifactAsync(string jobId, PrintArtifact artifact, CancellationToken cancellationToken);
+    Task<PrintArtifact?> FindArtifactAsync(string jobId, CancellationToken cancellationToken);
 }
 public sealed record IdempotencyRecord(string Scope, string Key, string Fingerprint, IReadOnlyList<string> ResourceIds);
 public interface IIdempotencyRepository

@@ -33,6 +33,10 @@ public sealed class HttpAcceptanceTests
                 ["Dependencies__ClockBaseUrl"] = fixtureUrl,
                 ["Dependencies__AccessToken"] = "test-system",
                 ["Storage__ConnectionString"] = TestDatabase.For(Path.Combine(directory, "service.db")),
+                ["S3__Endpoint"] = Environment.GetEnvironmentVariable("TEST_S3_ENDPOINT") ?? throw new InvalidOperationException("Set TEST_S3_ENDPOINT"),
+                ["S3__Region"] = "us-east-1",
+                ["S3__AccessKey"] = Environment.GetEnvironmentVariable("TEST_S3_ACCESS_KEY") ?? throw new InvalidOperationException("Set TEST_S3_ACCESS_KEY"),
+                ["S3__SecretKey"] = Environment.GetEnvironmentVariable("TEST_S3_SECRET_KEY") ?? throw new InvalidOperationException("Set TEST_S3_SECRET_KEY"),
                 ["Runtime__LeaseSeconds"] = "60",
                 ["Logging__LogLevel__Default"] = "Error"
             });

@@ -1,7 +1,8 @@
 CREATE TABLE IF NOT EXISTS sessions(game_id TEXT PRIMARY KEY, admission_version INTEGER NOT NULL CHECK(admission_version>0), is_open BOOLEAN NOT NULL);
 CREATE TABLE IF NOT EXISTS receipts(id TEXT PRIMARY KEY, blank_id TEXT UNIQUE NOT NULL, game_id TEXT NOT NULL,
 team_id TEXT NOT NULL, task_id TEXT NOT NULL, task_number TEXT NOT NULL, admission_version INTEGER NOT NULL,
-image_ref TEXT NOT NULL, accepted_at TEXT NOT NULL, verified_image BYTEA NOT NULL, media_type TEXT NOT NULL);
+image_ref TEXT NOT NULL, accepted_at TEXT NOT NULL, object_key TEXT NOT NULL UNIQUE,
+media_type TEXT NOT NULL, image_size BIGINT NOT NULL CHECK(image_size>0), image_sha256 TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS receipts_game ON receipts(game_id);
 CREATE TABLE IF NOT EXISTS submissions(receipt_id TEXT PRIMARY KEY, blank_id TEXT UNIQUE NOT NULL, game_id TEXT NOT NULL,
 team_id TEXT NOT NULL, task_id TEXT NOT NULL, task_number TEXT NOT NULL, verified_image BYTEA NOT NULL,

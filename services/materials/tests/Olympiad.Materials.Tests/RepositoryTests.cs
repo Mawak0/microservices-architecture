@@ -76,13 +76,13 @@ public sealed class RepositoryTests
             var pending = await s.PrintJobs.FindNextPendingAsync(now, ct); Assert.NotNull(pending);
             Assert.Equal("Математическая олимпиада", pending.Snapshot.Parameters["heading"].Display);
             Assert.True(pending.TryStart("token", now, TimeSpan.FromMinutes(1))); await s.PrintJobs.SaveAsync(pending, ct);
-            pending.Complete("token", "/artifact"); await s.PrintJobs.StoreArtifactAsync(pending.Id, [1, 2, 3], ct); await s.PrintJobs.SaveAsync(pending, ct); return true;
+            pending.Complete("token", "/artifact"); await s.PrintJobs.StoreArtifactAsync(pending.Id, new("object", "application/pdf", 3, "hash"), ct); await s.PrintJobs.SaveAsync(pending, ct); return true;
         }, default);
         await store.ExecuteAsync(async (s, ct) =>
         {
             Assert.Null(await s.PrintJobs.FindNextPendingAsync(now.AddHours(1), ct));
             Assert.Equal(PrintStatus.Completed, (await s.PrintJobs.FindAsync("job", ct))?.Status);
-            Assert.Equal(new byte[] { 1, 2, 3 }, await s.PrintJobs.FindArtifactAsync("job", ct)); return true;
+            Assert.Equal(new PrintArtifact("object", "application/pdf", 3, "hash"), await s.PrintJobs.FindArtifactAsync("job", ct)); return true;
         }, default);
     }
     [Fact] public async Task FreshDatabaseAdapterRetainsSecretBlanksReplayAndPendingEvents()

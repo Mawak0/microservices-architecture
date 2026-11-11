@@ -7,4 +7,7 @@
     <ProjectReference Include="../../../../building-blocks/Olympiad.Persistence.Postgres/Olympiad.Persistence.Postgres.csproj" />
     <EmbeddedResource Include="PersistenceSchema.sql" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\building-blocks\Olympiad.Storage.S3\Olympiad.Storage.S3.csproj" />
+  </ItemGroup>
 </Project>
