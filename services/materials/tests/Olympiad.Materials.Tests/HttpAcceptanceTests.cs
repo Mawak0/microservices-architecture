@@ -14,7 +14,7 @@ namespace Olympiad.Materials.Tests;
 public sealed class HttpAcceptanceTests
 {
     [Fact]
-    public async Task PublishedHttpContractPassesThroughRealApplicationAndSqlite()
+    public async Task PublishedHttpContractPassesThroughRealApplicationAndPostgres()
     {
         var root = FindRoot();
         var directory = Path.Combine(Path.GetTempPath(), "olympiad-http-" + Guid.NewGuid());
@@ -32,7 +32,7 @@ public sealed class HttpAcceptanceTests
                 ["Dependencies__BaseUrl"] = fixtureUrl,
                 ["Dependencies__ClockBaseUrl"] = fixtureUrl,
                 ["Dependencies__AccessToken"] = "test-system",
-                ["Storage__ConnectionString"] = "Data Source=" + Path.Combine(directory, "service.db") + ";Pooling=False",
+                ["Storage__ConnectionString"] = TestDatabase.For(Path.Combine(directory, "service.db")),
                 ["Runtime__LeaseSeconds"] = "60",
                 ["Logging__LogLevel__Default"] = "Error"
             });
@@ -123,6 +123,7 @@ public sealed class HttpAcceptanceTests
             this.client = client; listener.Prefixes.Add(Url + "/"); listener.Start(); loop = Forward();
         }
         private readonly List<Task> requests = [];
+        private volatile bool stopping;
         private async Task Forward()
         {
             try
@@ -130,8 +131,8 @@ public sealed class HttpAcceptanceTests
                 while (listener.IsListening)
                     requests.Add(ForwardOne(await listener.GetContextAsync()));
             }
-            catch (HttpListenerException) when (!listener.IsListening) { }
-            catch (ObjectDisposedException) when (!listener.IsListening) { }
+            catch (HttpListenerException) when (stopping) { }
+            catch (ObjectDisposedException) when (stopping) { }
         }
         private async Task ForwardOne(HttpListenerContext context)
         {
@@ -160,7 +161,7 @@ public sealed class HttpAcceptanceTests
         }
         public async ValueTask DisposeAsync()
         {
-            listener.Close(); await loop; await Task.WhenAll(requests);
+            stopping = true; listener.Close(); await loop; await Task.WhenAll(requests);
         }
     }
 }

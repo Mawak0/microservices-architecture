@@ -9,10 +9,10 @@ public sealed class AcceptanceStorageTests : IDisposable
 {
     private readonly string directory = Path.Combine(Path.GetTempPath(), "intake-acceptance-" + Guid.NewGuid());
     private readonly Dependencies dependencies = new();
-    private SqliteDatabase? database;
+    private PostgresDatabase? database;
     private async Task<AcceptBlank> Prepare()
     {
-        database = new SqliteDatabase($"Data Source={Path.Combine(directory, "answers.db")};Pooling=False");
+        database = new PostgresDatabase(TestDatabase.For(Path.Combine(directory, "answers.db")));
         await database.InitializeAsync();
         await database.ExecuteAsync(async (tx, ct) =>
         {

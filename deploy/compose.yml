@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:17.6
+    environment:
+      POSTGRES_USER: platform_admin
+      POSTGRES_DB: platform_admin
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:?Set POSTGRES_ADMIN_PASSWORD}
+      SERVICE_DATABASE_PASSWORD: ${SERVICE_DATABASE_PASSWORD:?Set SERVICE_DATABASE_PASSWORD}
+    ports: ['127.0.0.1:55432:5432']
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres/initialize.sh:/docker-entrypoint-initdb.d/10-services.sh:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U platform_admin -d platform_admin']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+volumes:
+  postgres-data:

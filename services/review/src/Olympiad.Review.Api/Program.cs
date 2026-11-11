@@ -26,10 +26,10 @@ DependencyHttp Dependency(string key)
     var address = new Uri(value.TrimEnd('/') + "/");
     return new(new HttpClient { Timeout = TimeSpan.FromSeconds(10) }, address, accessToken);
 }
-var database = new SqliteDatabase(configuration["Storage:ConnectionString"] ?? "Data Source=.data/review.db");
+var database = new PostgresDatabase(configuration["Storage:ConnectionString"] ?? throw new InvalidOperationException("Configure Storage:ConnectionString for PostgreSQL."));
 database.Initialize();
 builder.Services.AddSingleton(database);
-builder.Services.AddSingleton<ITransactions, SqliteTransactions>();
+builder.Services.AddSingleton<ITransactions, NpgsqlTransactions>();
 builder.Services.AddSingleton<IGameProfiles>(new HttpGameProfiles(Dependency("Games")));
 builder.Services.AddSingleton<IAcceptedReceipts>(new HttpAcceptedReceipts(Dependency("Receipts")));
 builder.Services.AddSingleton<ITaskAnswers>(new HttpTaskAnswers(Dependency("Tasks")));

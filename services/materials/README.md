@@ -1,7 +1,7 @@
 # Олимпиадная платформа Materials
 
 Реализация сервиса бланков и печатных материалов: C# 12 / .NET 8 / ASP.NET Core,
-SQLite, PDFsharp и QRCoder. Исходный контракт 0.3 и 24 приёмочных сценария сохранены.
+PostgreSQL, PDFsharp и QRCoder. Исходный контракт 0.3 и 24 приёмочных сценария сохранены.
 Сервис готовит комплекты, выпускает неизменяемые бланки с подписанным QR,
 проверяет подлинность и создаёт реальные PDF из снимка выбранного шаблона.
 
@@ -29,7 +29,7 @@ npm run test:service
 ```
 
 Последняя команда собирает настоящий сервис, выполняет xUnit-тесты, запускает
-изолированные внешние зависимости и HTTP-сервис с временной SQLite, выполняет
+изолированные внешние зависимости и HTTP-сервис с временной PostgreSQL, выполняет
 неизменённые приёмочные сценарии и независимо считывает QR с растрированной
 страницы фактически созданного PDF. Дополнительно выполняется настоящий рестарт
 процесса: сохраняются QR/key, комплект, replay и ранее недоставленные события.
@@ -68,13 +68,13 @@ GET /health не требует авторизации; остальные ма�
 | Переменная | Назначение |
 |---|---|
 | ASPNETCORE_URLS | Адрес HTTP |
-| Storage__ConnectionString | SQLite; default Data Source=.data/materials.db |
+| Storage__ConnectionString | Required: Host=localhost;Port=55432;Database=materials;Username=materials;Password=... |
 | Dependencies__BaseUrl | Общий адрес внешних adapters для локальной настройки |
 | Dependencies__IdentityBaseUrl, GamesBaseUrl, TeamsBaseUrl, TasksBaseUrl, EventsBaseUrl, TemplatesBaseUrl | Отдельные адреса под префиксом Dependencies__ |
 | Dependencies__AccessToken | Необязательная техническая Bearer identity; production default отсутствует |
 | Templates__Directory | Приоритетный собственный файловый каталог, файлы <key>.json |
 | Pdf__FontPath | TrueType-шрифт с нужными Unicode-глифами |
-| Security__QrSigningKeyBase64 | Внешний 256-bit+ секрет; иначе случайный ключ создаётся и сохраняется в SQLite |
+| Security__QrSigningKeyBase64 | Внешний 256-bit+ секрет; иначе случайный ключ создаётся и сохраняется в PostgreSQL |
 | Runtime__MaxBlanksPerBatch | Технический предел одного HTTP-выпуска, default 10000; не правило игры |
 | Dependencies__ClockBaseUrl | Управляемые часы; разрешены только в ContractTests |
 
@@ -88,7 +88,7 @@ HTTP-адаптер каталога. Сам PDF всегда создаёт с�
 
 Нужны реальные провайдеры identity, игр/допуска, неизменяемых задач и событий.
 Настройте HTTPS, техническую identity, права на БД/секрет, резервное копирование
-SQLite вместе с QR-ключом и собственный каталог шаблонов. Потеря или замена ключа
+PostgreSQL вместе с QR-ключом и собственный каталог шаблонов. Потеря или замена ключа
 сделает выданные QR непроверяемыми; несогласованная смена настроенного ключа
 отклоняется при запуске и требует миграции. Схема БД имеет версию 1;
 дальнейшие изменения требуют миграций. Events допускают повторы по стабильному eventId.

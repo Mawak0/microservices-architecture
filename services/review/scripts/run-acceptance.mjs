@@ -1,3 +1,4 @@
+import { postgresConnection } from '../test-support/postgres.mjs';
 import { spawn } from 'node:child_process';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -43,7 +44,7 @@ try {
   const service = start('dotnet', ['src/Olympiad.Review.Api/bin/Debug/net8.0/Olympiad.Review.Api.dll'], {
     ASPNETCORE_URLS: serviceUrl, ASPNETCORE_ENVIRONMENT: 'ContractTests',
     Dependencies__BaseUrl: fixtureUrl, Dependencies__ClockBaseUrl: fixtureUrl,
-    Dependencies__AccessToken: 'test-system', Storage__ConnectionString: 'Data Source=' + join(directory, 'review.db'),
+    Dependencies__AccessToken: 'test-system', Storage__ConnectionString: await postgresConnection(directory),
     Runtime__LeaseSeconds: '60', Logging__LogLevel__Default: 'Warning'
   });
   await ready(service, serviceUrl);

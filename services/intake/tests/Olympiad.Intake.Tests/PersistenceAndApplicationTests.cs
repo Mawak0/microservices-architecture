@@ -50,7 +50,7 @@ public sealed class PersistenceAndApplicationTests
         using var fixture = new Fixture(); await fixture.InitializeAsync(); await fixture.OpenGameAsync();
         var command = fixture.Command; var operation = new OperationIdentity("observer:accept", "key", "body");
         var first = await fixture.Accept.ExecuteAsync(command, operation, default);
-        var reopened = new SqliteDatabase(fixture.ConnectionString); await reopened.InitializeAsync();
+        var reopened = new PostgresDatabase(fixture.ConnectionString); await reopened.InitializeAsync();
         var stored = await new GetReceipt(reopened).ExecuteAsync(first.Receipt.Id, default);
         Assert.Equal(first.Receipt.ImageRef, stored.ImageRef);
         var saved = await reopened.ExecuteAsync((tx, ct) => tx.Operations.FindAsync(operation, ct), default);
@@ -105,7 +105,7 @@ public sealed class PersistenceAndApplicationTests
         var pending = new PendingSubmission("interrupted-receipt", fixture.Registry.Blank, new byte[] { 1, 2, 3 }, "image/png",
             new("accept", "recovery", "body"), "dead-worker", fixture.Clock.Now.AddSeconds(-1));
         await fixture.Database.ExecuteAsync(async (tx, ct) => { await tx.Submissions.AddAsync(pending, ct); return true; }, default);
-        var reopened = new SqliteDatabase(fixture.ConnectionString);
+        var reopened = new PostgresDatabase(fixture.ConnectionString);
         var finalizer = new SubmissionFinalizer(reopened, fixture.Images, fixture.Game, fixture.Teams, fixture.Clock);
         Assert.True(await new RecoverPendingSubmission(reopened, finalizer, fixture.Clock).ExecuteAsync(default));
         var receipt = await new GetReceipt(reopened).ExecuteAsync("interrupted-receipt", default);
@@ -174,7 +174,7 @@ public sealed class PersistenceAndApplicationTests
         using var fixture = new Fixture(); await fixture.InitializeAsync(); await fixture.OpenGameAsync();
         var accepted = await fixture.Accept.ExecuteAsync(fixture.Command, new("accept", "lease", "body"), default);
         var stranded = await fixture.Database.ExecuteAsync((tx, ct) => tx.Outbox.ClaimAsync("stopped-process", fixture.Clock.Now, fixture.Clock.Now.AddSeconds(30), ct), default);
-        var reopened = new SqliteDatabase(fixture.ConnectionString);
+        var reopened = new PostgresDatabase(fixture.ConnectionString);
         var publisher = new RecordingPublisher(); var delivery = new DeliverPendingEvent(reopened, publisher, fixture.Clock);
         fixture.Clock.Now = fixture.Clock.Now.AddSeconds(10);
         Assert.False(await delivery.ExecuteAsync(default)); Assert.Empty(publisher.Events);
@@ -194,7 +194,7 @@ public sealed class PersistenceAndApplicationTests
         var publisher = new RecordingPublisher { BeforePublish = () => cancellation.Cancel() };
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => new DeliverPendingEvent(fixture.Database, publisher, fixture.Clock).ExecuteAsync(cancellation.Token));
         publisher.BeforePublish = null;
-        var resumed = new DeliverPendingEvent(new SqliteDatabase(fixture.ConnectionString), publisher, fixture.Clock);
+        var resumed = new DeliverPendingEvent(new PostgresDatabase(fixture.ConnectionString), publisher, fixture.Clock);
         Assert.False(await resumed.ExecuteAsync(default));
         fixture.Clock.Now = fixture.Clock.Now.AddSeconds(31);
         Assert.True(await resumed.ExecuteAsync(default)); Assert.Equal(publisher.Events[0].EventId, publisher.Events[1].EventId);
@@ -253,7 +253,7 @@ public sealed class PersistenceAndApplicationTests
     {
         private readonly string directory = Path.Combine(Path.GetTempPath(), "olympiad-unit-" + Guid.NewGuid());
         public string ConnectionString { get; }
-        public SqliteDatabase Database { get; }
+        public PostgresDatabase Database { get; }
         public FakeClock Clock { get; } = new();
         public FakeGames Game { get; }
         public FakeTeams Teams { get; } = new();
@@ -266,7 +266,7 @@ public sealed class PersistenceAndApplicationTests
         public Fixture()
         {
             Directory.CreateDirectory(directory);
-            ConnectionString = $"Data Source={Path.Combine(directory, "intake.db")};Pooling=False;Default Timeout=30";
+            ConnectionString = TestDatabase.For(Path.Combine(directory, "intake.db"));
             Database = new(ConnectionString); Game = new(new("game", 1, "running", Clock.Now.AddHours(1), false));
             Open = new(Database, Game, Clock); Finalizer = new(Database, Images, Game, Teams, Clock);
             Accept = new(Database, Registry, Game, Teams, new FakeDecoder(), Finalizer, Clock, new());

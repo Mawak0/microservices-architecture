@@ -1,3 +1,4 @@
+import { postgresConnection } from '../test-support/postgres.mjs';
 import { spawn } from 'node:child_process';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -43,7 +44,7 @@ try {
   const serviceEnvironment = {
     ...process.env, ASPNETCORE_ENVIRONMENT: 'ContractTests', ASPNETCORE_URLS: serviceBase,
     Dependencies__BaseUrl: fixtureBase, Dependencies__ClockBaseUrl: fixtureBase, Dependencies__AccessToken: 'test-system',
-    Storage__ConnectionString: `Data Source=${join(directory, 'intake.db')};Default Timeout=30`,
+    Storage__ConnectionString: await postgresConnection(directory),
     Logging__LogLevel__Default: 'Warning'
   };
   let service;

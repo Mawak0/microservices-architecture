@@ -8,6 +8,19 @@ defaults:
 jobs:
   contracts:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17.6
+        env:
+          POSTGRES_USER: olympiad_test
+          POSTGRES_PASSWORD: local-ci-only
+          POSTGRES_DB: olympiad_tests
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U olympiad_test -d olympiad_tests"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      TEST_POSTGRES_CONNECTION: 'Host=127.0.0.1;Port=5432;Database=olympiad_tests;Username=olympiad_test;Password=local-ci-only'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

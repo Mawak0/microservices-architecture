@@ -15,13 +15,13 @@ internal static class CompositionRoot
     public static async Task ConfigureAsync(WebApplicationBuilder builder, CancellationToken cancellationToken)
     {
         var config = builder.Configuration;
-        var database = new SqliteDatabase(config["Storage:ConnectionString"] ?? "Data Source=.data/materials.db");
+        var database = new PostgresDatabase(config["Storage:ConnectionString"] ?? throw new InvalidOperationException("Configure Storage:ConnectionString for PostgreSQL."));
         await database.InitializeAsync(cancellationToken);
         var configuredKey = config["Security:QrSigningKeyBase64"] is { } encoded ? Convert.FromBase64String(encoded) : null;
         var key = await database.GetOrCreateSigningKeyAsync(configuredKey, cancellationToken);
         GlobalFontSettings.FontResolver ??= new UnicodeFontResolver(config["Pdf:FontPath"]);
         builder.Services.AddSingleton(database);
-        builder.Services.AddSingleton<IMaterialsTransactions, SqliteMaterialsTransactions>();
+        builder.Services.AddSingleton<IMaterialsTransactions, PostgresMaterialsTransactions>();
         builder.Services.AddSingleton<IBlankTokenProtector>(new HmacBlankTokenProtector(key));
         builder.Services.AddSingleton<IPdfRenderer, PdfSharpMaterialRenderer>();
         DependencyClient Dependency(string specific)

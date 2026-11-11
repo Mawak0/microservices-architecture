@@ -10,8 +10,8 @@ const allowedReferences = {
   Infrastructure: ['Domain', 'Application'],
   Api: ['Domain', 'Application', 'Infrastructure']
 };
-const forbiddenCoreNamespaces = /^(?:Microsoft\.|System\.(?:Net|Data|Text\.Json|IO)|Dapper|MediatR|FluentValidation|ZXing|SixLabors|PdfSharp|QRCoder|Newtonsoft)/;
-const forbiddenCoreMechanisms = /\b(?:HttpClient|HttpContext|HttpStatusCode|IServiceProvider|IConfiguration|SqliteConnection|JsonElement|JsonObject|DbContext)\b/;
+const forbiddenCoreNamespaces = /^(?:Microsoft\.|System\.(?:Net|Data|Text\.Json|IO)|Npgsql|Amazon|Dapper|MediatR|FluentValidation|ZXing|SixLabors|PdfSharp|QRCoder|Newtonsoft)/;
+const forbiddenCoreMechanisms = /\b(?:HttpClient|HttpContext|HttpStatusCode|IServiceProvider|IConfiguration|NpgsqlConnection|SqliteConnection|JsonElement|JsonObject|DbContext)\b/;
 const forbiddenAmbientDomain = /\b(?:DateTime|DateTimeOffset)\.(?:Now|UtcNow)|\bGuid\.NewGuid\s*\(|\b(?:File|Directory|Environment)\./;
 
 function filesIn(directory) {
@@ -52,7 +52,7 @@ export function auditArchitecture(root) {
     for (const match of xml.matchAll(/<ProjectReference\b[^>]*Include="([^"]+)"/g)) {
       const reference = path.basename(match[1].replaceAll('\\', '/'), '.csproj');
       const referenceLayer = layers.find(value => reference.endsWith(`.${value}`));
-      if (!allowedReferences[layer].includes(referenceLayer))
+      if (!(layer === 'Infrastructure' && reference === 'Olympiad.Persistence.Postgres') && !allowedReferences[layer].includes(referenceLayer))
         fail(project, `${layer} references forbidden project ${reference}.`);
     }
     if (['Domain', 'Application'].includes(layer) && /<(?:PackageReference|FrameworkReference)\b/.test(xml))

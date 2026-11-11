@@ -31,6 +31,6 @@ internal static class EventSerialization
 internal sealed class EventOutbox(DatabaseScope database) : IEventOutbox
 {
     public void Add(ReviewEvent message) => database.Execute(
-        "INSERT INTO outbox(event_id,message) VALUES($id,$message)",
-        ("$id", message.EventId), ("$message", EventSerialization.Serialize(message)));
+        "INSERT INTO outbox(event_id,message) VALUES(@id,@message)",
+        ("@id", message.EventId), ("@message", EventSerialization.Serialize(message)));
 }

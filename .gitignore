@@ -11,3 +11,6 @@ test-results/
 **/TestResults/
 **/artifacts/
 /output/
+/.local/
+
+/deploy/.env

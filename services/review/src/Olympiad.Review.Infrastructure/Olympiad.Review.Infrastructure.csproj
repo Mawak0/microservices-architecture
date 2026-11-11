@@ -1,1 +1,3 @@
-<Project Sdk="Microsoft.NET.Sdk"><ItemGroup><ProjectReference Include="../Olympiad.Review.Application/Olympiad.Review.Application.csproj" /><PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.31" /><PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="3.53.3" /></ItemGroup></Project>
+<Project Sdk="Microsoft.NET.Sdk"><ItemGroup><ProjectReference Include="../Olympiad.Review.Application/Olympiad.Review.Application.csproj" />  <ProjectReference Include="../../../../building-blocks/Olympiad.Persistence.Postgres/Olympiad.Persistence.Postgres.csproj" />
+    <EmbeddedResource Include="PersistenceSchema.sql" />
+  </ItemGroup></Project>

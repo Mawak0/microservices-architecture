@@ -40,7 +40,7 @@ public sealed class ArchitectureTests
             foreach (var file in Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories).Where(p => !p.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}")))
             {
                 var source = File.ReadAllText(file);
-                foreach (var forbidden in new[] { "HttpClient", "JsonSerializer", "JsonObject", "Microsoft.Data.Sqlite", "IServiceProvider", "System.IO", "Microsoft.AspNetCore" })
+                foreach (var forbidden in new[] { "HttpClient", "JsonSerializer", "JsonObject", "Npgsql", "IServiceProvider", "System.IO", "Microsoft.AspNetCore" })
                     Assert.DoesNotContain(forbidden, source);
             }
         }

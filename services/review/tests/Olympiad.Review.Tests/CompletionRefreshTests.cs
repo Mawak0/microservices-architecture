@@ -1,4 +1,4 @@
-using Microsoft.Data.Sqlite;
+using Npgsql;
 using Olympiad.Review.Application;
 using Olympiad.Review.Domain;
 using Olympiad.Review.Infrastructure;
@@ -11,8 +11,8 @@ public sealed class CompletionRefreshTests : IDisposable
     private readonly ITransactions transactions;
     public CompletionRefreshTests()
     {
-        var database = new SqliteDatabase("Data Source=" + Path.Combine(directory, "review.db"));
-        database.Initialize(); transactions = new SqliteTransactions(database);
+        var database = new PostgresDatabase(TestDatabase.For(Path.Combine(directory, "review.db")));
+        database.Initialize(); transactions = new NpgsqlTransactions(database);
     }
     [Theory]
     [InlineData(FailureKind.Missing)]
@@ -67,7 +67,7 @@ public sealed class CompletionRefreshTests : IDisposable
     }
     public void Dispose()
     {
-        SqliteConnection.ClearAllPools();
+        NpgsqlConnection.ClearAllPools();
         if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true);
     }
 }

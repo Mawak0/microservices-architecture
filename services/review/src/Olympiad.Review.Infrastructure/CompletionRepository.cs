@@ -12,15 +12,15 @@ internal sealed class CompletionRepository(DatabaseScope database) : ICompletion
     }
     public GameReviewCompletion Get(string gameId)
     {
-        var state = database.Read<CompletionSnapshot>("SELECT snapshot FROM completions WHERE game_id=$game", ("$game", gameId));
+        var state = database.Read<CompletionSnapshot>("SELECT snapshot FROM completions WHERE game_id=@game", ("@game", gameId));
         return state is null ? new(gameId) : GameReviewCompletion.Restore(state);
     }
     public void Save(GameReviewCompletion completion)
     {
         var state = completion.Snapshot();
         database.Execute("""
-            INSERT INTO completions(game_id,snapshot) VALUES($game,$snapshot)
+            INSERT INTO completions(game_id,snapshot) VALUES(@game,@snapshot)
             ON CONFLICT(game_id) DO UPDATE SET snapshot=excluded.snapshot
-            """, ("$game", state.GameId), ("$snapshot", DatabaseScope.Serialize(state)));
+            """, ("@game", state.GameId), ("@snapshot", DatabaseScope.Serialize(state)));
     }
 }

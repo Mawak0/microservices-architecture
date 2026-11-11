@@ -1,6 +1,6 @@
 # Олимпиадная платформа — сервис проверки и апелляций
 
-Реализация на C# 12 / .NET 8 / ASP.NET Core и SQLite. Контракт 0.3 и все
+Реализация на C# 12 / .NET 8 / ASP.NET Core и PostgreSQL. Контракт 0.3 и все
 46 исходных приёмочных сценариев сохранены. Сервис назначает ответы проверяющим,
 хранит вердикты и историю, рассматривает апелляции, управляет общей квотой игры
 и автоматически публикует подтверждение полноты проверок.
@@ -20,7 +20,7 @@ npm run test:service
 ```
 
 Последняя команда собирает реальный сервис, запускает отдельные процессы сервиса
-и внешних заглушек на свободных loopback-портах с новой временной SQLite,
+и внешних заглушек на свободных loopback-портах с новой временной PostgreSQL,
 выполняет 46 сценариев контракта и семь runtime-испытаний назначения,
 авторизации и автоматического завершения.
 В конце процессы и временные данные удаляются, в том числе при ошибке.
@@ -45,7 +45,7 @@ dotnet run --project src/Olympiad.Review.Api
 | Настройка | Назначение |
 |---|---|
 | `ASPNETCORE_URLS` | Адрес HTTP |
-| `Storage__ConnectionString` | SQLite, по умолчанию `Data Source=.data/review.db` |
+| `Storage__ConnectionString` | Обязательная строка `Host=localhost;Port=55432;Database=review;Username=review;Password=...` |
 | `Dependencies__BaseUrl` | Общий адрес соседних систем, необязателен при отдельных адресах |
 | `Dependencies__IdentityBaseUrl` | Introspection аутентификации |
 | `Dependencies__GamesBaseUrl` | Актуальные сроки, версия приёма и возможности игры |
@@ -65,7 +65,7 @@ dotnet run --project src/Olympiad.Review.Api
 
 - `src/Olympiad.Review.Domain` — агрегаты и инварианты без фреймворков.
 - `src/Olympiad.Review.Application` — сценарии, небольшие порты и транзакционные границы.
-- `src/Olympiad.Review.Infrastructure` — SQLite, HTTP-адаптеры, outbox.
+- `src/Olympiad.Review.Infrastructure` — PostgreSQL, HTTP-адаптеры, outbox.
 - `src/Olympiad.Review.Api` — HTTP, авторизация, композиция и фоновые координаторы.
 - `tests/Olympiad.Review.Tests` — домен, подстановка портов, SQL, восстановление и архитектура.
 - `ARCHITECTURE.md` — зависимости, SOLID и гарантии.
