@@ -51,7 +51,7 @@ public sealed class ApiTests
     public async Task DurableHttpSubmissionWaitsForCheckingCheckpointAndKeepsItsIdentity()
     {
         await using var app = new ApiFixture(workflows: true); using var client = app.CreateClient();
-        using var opened = await app.Send(client, HttpMethod.Put, "/intake-sessions/game", new { admissionVersion = 1 });
+        using var opened = await Olympiad.Testing.DurableHttp.Settled(() => app.Send(client, HttpMethod.Put, "/intake-sessions/game", new { admissionVersion = 1 },key:"saved-opening"));
         Assert.Equal(HttpStatusCode.OK, opened.StatusCode);
         var body = app.Blank();
         using var accepted = await Olympiad.Testing.DurableHttp.Settled(() => app.Send(client, HttpMethod.Post, "/receipts", body, "observer", "saved-answer"));
