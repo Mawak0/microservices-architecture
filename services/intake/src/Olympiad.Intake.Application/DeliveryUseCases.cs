@@ -32,3 +32,41 @@ public sealed class SubmissionFinalizer(IIntakeUnitOfWork store, IImageStorage i
     }
 }
 
+public sealed class RecoverPendingSubmission(IIntakeUnitOfWork store, SubmissionFinalizer finalizer, IClock clock)
+{
+    public async Task<bool> ExecuteAsync(CancellationToken ct)
+    {
+        var now = await clock.NowAsync(ct);
+        var pending = await store.ExecuteAsync((tx, token) =>
+            tx.Submissions.ClaimExpiredAsync(Guid.NewGuid().ToString(), now, now.AddSeconds(30), token), ct);
+        if (pending is null) return false;
+        try { await finalizer.ExecuteAsync(pending, ct); }
+        catch (IntakeException exception) when (exception.Error is IntakeError.IntakeClosed or IntakeError.TeamNotAdmitted)
+        {
+            await store.ExecuteAsync(async (tx, token) => { await tx.Submissions.RemoveAsync(pending.ReceiptId, pending.WorkerToken, token); return true; }, ct);
+        }
+        return true;
+    }
+}
+
+public sealed class DeliverPendingEvent(IIntakeUnitOfWork store, IEventPublisher publisher, IClock clock)
+{
+    public async Task<bool> ExecuteAsync(CancellationToken ct)
+    {
+        var now = await clock.NowAsync(ct);
+        var delivery = await store.ExecuteAsync((tx, token) =>
+            tx.Outbox.ClaimAsync(Guid.NewGuid().ToString(), now, now.AddSeconds(30), token), ct);
+        if (delivery is null) return false;
+        try
+        {
+            await publisher.PublishAsync(delivery.Event, ct);
+            await store.ExecuteAsync(async (tx, token) => { await tx.Outbox.CompleteAsync(delivery.Event.EventId, delivery.WorkerToken, token); return true; }, ct);
+        }
+        catch when (!ct.IsCancellationRequested)
+        {
+            await store.ExecuteAsync(async (tx, token) => { await tx.Outbox.RetryAsync(delivery.Event.EventId, delivery.WorkerToken, now.AddMilliseconds(250), token); return true; }, ct);
+            throw;
+        }
+        return true;
+    }
+}
