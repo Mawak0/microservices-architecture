@@ -1,0 +1,3 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup><ProjectReference Include="../Olympiad.Intake.Domain/Olympiad.Intake.Domain.csproj" /></ItemGroup>
+</Project>
