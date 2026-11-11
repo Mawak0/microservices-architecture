@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Olympiad.Intake.Domain", "s
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Olympiad.Intake.Application", "src\Olympiad.Intake.Application\Olympiad.Intake.Application.csproj", "{6AE5F2B7-A971-4B32-83C9-C6568760A87C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Olympiad.Intake.Infrastructure", "src\Olympiad.Intake.Infrastructure\Olympiad.Intake.Infrastructure.csproj", "{37FB9E7D-5D15-43E8-B90E-BEC6014FDDF4}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Olympiad.Intake.Tests", "tests\Olympiad.Intake.Tests\Olympiad.Intake.Tests.csproj", "{733B3CE0-346B-4588-8602-51431AF564F0}"
 EndProject
 Global
@@ -26,6 +28,10 @@ Global
 		{6AE5F2B7-A971-4B32-83C9-C6568760A87C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6AE5F2B7-A971-4B32-83C9-C6568760A87C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6AE5F2B7-A971-4B32-83C9-C6568760A87C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{37FB9E7D-5D15-43E8-B90E-BEC6014FDDF4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{37FB9E7D-5D15-43E8-B90E-BEC6014FDDF4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{37FB9E7D-5D15-43E8-B90E-BEC6014FDDF4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{37FB9E7D-5D15-43E8-B90E-BEC6014FDDF4}.Release|Any CPU.Build.0 = Release|Any CPU
 		{733B3CE0-346B-4588-8602-51431AF564F0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{733B3CE0-346B-4588-8602-51431AF564F0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{733B3CE0-346B-4588-8602-51431AF564F0}.Release|Any CPU.ActiveCfg = Release|Any CPU

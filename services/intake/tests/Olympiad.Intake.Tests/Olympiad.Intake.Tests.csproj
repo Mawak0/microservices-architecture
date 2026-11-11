@@ -4,7 +4,7 @@
     
     <ProjectReference Include="../../src/Olympiad.Intake.Domain/Olympiad.Intake.Domain.csproj" />
     <ProjectReference Include="../../src/Olympiad.Intake.Application/Olympiad.Intake.Application.csproj" />
-    
+    <ProjectReference Include="../../src/Olympiad.Intake.Infrastructure/Olympiad.Intake.Infrastructure.csproj" />
     <PackageReference Include="coverlet.collector" Version="6.0.4"><PrivateAssets>all</PrivateAssets></PackageReference>
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.31" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
