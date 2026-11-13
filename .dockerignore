@@ -1,0 +1,9 @@
+.git
+**/node_modules
+**/bin
+**/obj
+.local
+.demo-data
+**/TestResults
+**/.env
+output

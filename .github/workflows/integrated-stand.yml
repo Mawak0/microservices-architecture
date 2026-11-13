@@ -1,0 +1,49 @@
+name: Integrated PostgreSQL and S3 demonstration
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  end-to-end:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Create disposable configuration
+        shell: python
+        run: |
+          import secrets
+          from pathlib import Path
+          keys = ['POSTGRES_ADMIN_PASSWORD','MATERIALS_DATABASE_PASSWORD','INTAKE_DATABASE_PASSWORD','REVIEW_DATABASE_PASSWORD','DEMO_DATABASE_PASSWORD','S3_ACCESS_KEY','S3_SECRET_KEY']
+          Path('deploy/.env').write_text(''.join(f'{key}={secrets.token_hex(24)}\n' for key in keys))
+      - name: Build and start the complete stand
+        run: docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build --wait --wait-timeout 180
+      - run: npm ci
+        working-directory: demo
+      - name: Exercise the three real services
+        run: node demo/smoke.mjs
+      - name: Record durable identities and objects
+        run: node demo/restart-smoke.mjs before
+      - name: Verify isolation
+        run: node demo/storage-isolation.mjs --compose
+      - name: Submit while the checking service is unavailable
+        run: |
+          node demo/delivery-smoke.mjs prepare
+          docker compose -f deploy/compose.yml --env-file deploy/.env stop review
+          node demo/delivery-smoke.mjs submit
+      - name: Restart services, PostgreSQL and S3
+        run: |
+          docker compose -f deploy/compose.yml --env-file deploy/.env stop
+          docker compose -f deploy/compose.yml --env-file deploy/.env up -d --wait --wait-timeout 180
+      - name: Verify recovered queue, photograph and PDF
+        run: |
+          node demo/restart-smoke.mjs after
+          node demo/delivery-smoke.mjs verify
+      - name: Show diagnostics
+        if: failure()
+        run: docker compose -f deploy/compose.yml --env-file deploy/.env logs --no-color --tail 120
+      - name: Stop the stand
+        if: always()
+        run: docker compose -f deploy/compose.yml --env-file deploy/.env down
