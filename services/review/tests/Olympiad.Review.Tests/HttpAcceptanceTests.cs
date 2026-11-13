@@ -94,11 +94,13 @@ public sealed class HttpAcceptanceTests
         var data = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(receipt.GetRawText())!;
         var id = data["id"].GetString(); data.Remove("id"); data["receiptId"] = JsonSerializer.SerializeToElement(id);
         await using var application = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
-            builder.UseContentRoot(root).UseEnvironment("ContractTests").UseSetting("Workflows:Enabled", "true").UseSetting("Logging:LogLevel:Default", "Warning"));
+            builder.UseContentRoot(root).UseEnvironment("ContractTests")
+                .UseSetting("Storage:ConnectionString", TestDatabase.For("durable-http-" + Guid.NewGuid()))
+                .UseSetting("Workflows:Enabled", "true").UseSetting("Logging:LogLevel:Default", "Warning"));
         using var client = application.CreateClient(); client.DefaultRequestHeaders.Authorization = new("Bearer", "test-system");
         client.DefaultRequestHeaders.Add("Idempotency-Key", Guid.NewGuid().ToString());
         using var received = await client.PostAsJsonAsync("/integrations/receipts", new { eventId = Guid.NewGuid().ToString(), type = "ReceiptAccepted", occurredAt = DateTimeOffset.UtcNow, aggregateId = id, operationId = "source-operation", processVersion = 1, data });
-        Assert.Equal(HttpStatusCode.Created, received.StatusCode);
+        Assert.True(received.StatusCode == HttpStatusCode.Created, await received.Content.ReadAsStringAsync());
         Assert.Equal("source-operation", received.Headers.GetValues("Operation-Id").Single());
         Assert.Equal("ReviewRegistered", received.Headers.GetValues("Checkpoint").Single());
         var check = (await received.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetString();

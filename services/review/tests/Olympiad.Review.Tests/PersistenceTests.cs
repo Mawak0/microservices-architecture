@@ -14,6 +14,34 @@ public sealed class PersistenceTests : IDisposable
     }
     private static CommandIdentity Identity(string key = "key", string actor = "actor") => new(actor, "verdict", key, "hash");
     [Fact]
+    public async Task ConcurrentCompletionPollingDoesNotRewriteUnchangedState()
+    {
+        var database = Database(); var tx = new NpgsqlTransactions(database);
+        await tx.Run<int>(null, s => { s.Completions.Save(new("game")); return new(0); }, default);
+        string RowVersion()
+        {
+            using var connection = database.Open();
+            using var command = new NpgsqlCommand("SELECT xmin::text FROM completions WHERE game_id='game'", connection);
+            return (string)command.ExecuteScalar()!;
+        }
+        var originalVersion = RowVersion();
+        await Task.WhenAll(Enumerable.Range(0, 16).Select(_ => Task.Run(() =>
+            new NpgsqlTransactions(database).Run<int>(null, s =>
+            {
+                s.Completions.Save(s.Completions.Get("game")); return new(0);
+            }, default))));
+        Assert.Equal(originalVersion, RowVersion());
+
+        await tx.Run<int>(null, s =>
+        {
+            var completion = s.Completions.Get("game");
+            completion.Receive(1, ["receipt"], 1); s.Completions.Save(completion); return new(0);
+        }, default);
+        Assert.NotEqual(originalVersion, RowVersion());
+        var saved = await tx.Run<CompletionSnapshot>(null, s => new(s.Completions.Get("game").Snapshot()), default);
+        Assert.Equal(["receipt"], saved.Value.ReceiptIds);
+    }
+    [Fact]
     public async Task RestartRetainsCheckLeaseFencingAndSuccessfulResponse()
     {
         var tx = new NpgsqlTransactions(Database()); var c = DomainTests.Check();

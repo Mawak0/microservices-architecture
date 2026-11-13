@@ -18,9 +18,14 @@ internal sealed class CompletionRepository(DatabaseScope database) : ICompletion
     public void Save(GameReviewCompletion completion)
     {
         var state = completion.Snapshot();
+        var snapshot = DatabaseScope.Serialize(state);
+        // Polling must remain read-only when the completion state has not changed.
+        // Even an UPDATE of the same value creates a new row version and SSI conflicts.
+        using var existing = database.Command("SELECT snapshot FROM completions WHERE game_id=@game", ("@game", state.GameId));
+        if (existing.ExecuteScalar() is string persisted && persisted == snapshot) return;
         database.Execute("""
             INSERT INTO completions(game_id,snapshot) VALUES(@game,@snapshot)
             ON CONFLICT(game_id) DO UPDATE SET snapshot=excluded.snapshot
-            """, ("@game", state.GameId), ("@snapshot", DatabaseScope.Serialize(state)));
+            """, ("@game", state.GameId), ("@snapshot", snapshot));
     }
 }
