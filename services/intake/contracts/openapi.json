@@ -60,10 +60,53 @@
                   "$ref": "#/components/schemas/Session"
                 }
               }
+            },
+            "headers": {
+              "Operation-Id": {
+                "description": "Неизменяемый идентификатор сохранённой операции",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Operation-Status": {
+                "description": "Состояние обработки и ожидания контрольной точки",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Operation-Location": {
+                "description": "Путь GET /operations/{id}",
+                "schema": {
+                  "type": "string"
+                }
+              }
             }
           },
           "default": {
             "$ref": "#/components/responses/Error"
+          },
+          "202": {
+            "description": "Запрос надёжно сохранён; выполнение или подтверждение ещё ожидается. Состояние доступно по Operation-Location.",
+            "headers": {
+              "Operation-Id": {
+                "description": "Неизменяемый идентификатор сохранённой операции",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Operation-Status": {
+                "description": "Состояние обработки и ожидания контрольной точки",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Operation-Location": {
+                "description": "Путь GET /operations/{id}",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       },
@@ -134,10 +177,53 @@
                   "$ref": "#/components/schemas/Session"
                 }
               }
+            },
+            "headers": {
+              "Operation-Id": {
+                "description": "Неизменяемый идентификатор сохранённой операции",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Operation-Status": {
+                "description": "Состояние обработки и ожидания контрольной точки",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Operation-Location": {
+                "description": "Путь GET /operations/{id}",
+                "schema": {
+                  "type": "string"
+                }
+              }
             }
           },
           "default": {
             "$ref": "#/components/responses/Error"
+          },
+          "202": {
+            "description": "Запрос надёжно сохранён; выполнение или подтверждение ещё ожидается. Состояние доступно по Operation-Location.",
+            "headers": {
+              "Operation-Id": {
+                "description": "Неизменяемый идентификатор сохранённой операции",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Operation-Status": {
+                "description": "Состояние обработки и ожидания контрольной точки",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Operation-Location": {
+                "description": "Путь GET /operations/{id}",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         },
         "description": "Закрыть приём при истёкшем сроке и выключенном lateSubmissionAllowed. Manifest включает все ранее принятые ответы этой игры."
@@ -176,6 +262,26 @@
                   "$ref": "#/components/schemas/Receipt"
                 }
               }
+            },
+            "headers": {
+              "Operation-Id": {
+                "description": "Неизменяемый идентификатор сохранённой операции",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Operation-Status": {
+                "description": "Состояние обработки и ожидания контрольной точки",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Operation-Location": {
+                "description": "Путь GET /operations/{id}",
+                "schema": {
+                  "type": "string"
+                }
+              }
             }
           },
           "201": {
@@ -186,10 +292,53 @@
                   "$ref": "#/components/schemas/Receipt"
                 }
               }
+            },
+            "headers": {
+              "Operation-Id": {
+                "description": "Неизменяемый идентификатор сохранённой операции",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Operation-Status": {
+                "description": "Состояние обработки и ожидания контрольной точки",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Operation-Location": {
+                "description": "Путь GET /operations/{id}",
+                "schema": {
+                  "type": "string"
+                }
+              }
             }
           },
           "default": {
             "$ref": "#/components/responses/Error"
+          },
+          "202": {
+            "description": "Запрос надёжно сохранён; выполнение или подтверждение ещё ожидается. Состояние доступно по Operation-Location.",
+            "headers": {
+              "Operation-Id": {
+                "description": "Неизменяемый идентификатор сохранённой операции",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Operation-Status": {
+                "description": "Состояние обработки и ожидания контрольной точки",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Operation-Location": {
+                "description": "Путь GET /operations/{id}",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       }
@@ -274,6 +423,85 @@
           }
         }
       ]
+    },
+    "/operations/{id}": {
+      "get": {
+        "summary": "Состояние сохранённой операции (владелец или администратор)",
+        "operationId": "getDurableOperation",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Состояние, число попыток, следующая попытка, причина отказа и идентификатор результата. Без тела исходного запроса и секретов.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "operationId",
+                    "status",
+                    "attempts",
+                    "version"
+                  ],
+                  "properties": {
+                    "operationId": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "Accepted",
+                        "Running",
+                        "AwaitingCheckpoint",
+                        "Compensating",
+                        "Completed",
+                        "Failed"
+                      ]
+                    },
+                    "attempts": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "version": {
+                      "type": "integer",
+                      "const": 1
+                    },
+                    "lastError": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "resourceId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Требуется аутентификация"
+          },
+          "403": {
+            "description": "Недостаточно прав"
+          },
+          "404": {
+            "description": "Операция отсутствует или принадлежит другому пользователю"
+          }
+        }
+      }
     }
   },
   "components": {

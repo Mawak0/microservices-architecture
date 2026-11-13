@@ -9,5 +9,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\..\building-blocks\Olympiad.Storage.S3\Olympiad.Storage.S3.csproj" />
+    <ProjectReference Include="..\..\..\..\building-blocks\Olympiad.Workflows.Application\Olympiad.Workflows.Application.csproj" />
   </ItemGroup>
 </Project>

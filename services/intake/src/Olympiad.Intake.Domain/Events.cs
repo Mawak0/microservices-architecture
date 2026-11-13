@@ -11,6 +11,8 @@ public sealed record ReceiptAcceptedData(string ReceiptId, string BlankId, strin
 public sealed record ReceiptAccepted(string EventId, DateTimeOffset OccurredAt, string AggregateId,
     ReceiptAcceptedData Data) : IntakeEvent(EventId, OccurredAt, AggregateId)
 {
+    public string? OperationId { get; init; }
+    public int ProcessVersion { get; init; } = 1;
     public override string Type => nameof(ReceiptAccepted);
     public static ReceiptAccepted From(Receipt receipt, string eventId) => new(eventId, receipt.AcceptedAt, receipt.Id,
         new(receipt.Id, receipt.Blank.BlankId, receipt.Blank.GameId, receipt.AdmissionVersion,
@@ -22,4 +24,9 @@ public sealed record IntakeClosed(string EventId, DateTimeOffset OccurredAt, str
     IntakeClosedData Data) : IntakeEvent(EventId, OccurredAt, AggregateId)
 {
     public override string Type => nameof(IntakeClosed);
+}
+public sealed record UploadAbandoned(string EventId,DateTimeOffset OccurredAt,string AggregateId)
+    : IntakeEvent(EventId,OccurredAt,AggregateId)
+{
+    public override string Type => nameof(UploadAbandoned);
 }

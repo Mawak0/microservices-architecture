@@ -18,7 +18,7 @@ public interface IEventPublisher { Task PublishAsync(IntakeEvent message, Cancel
 public sealed record Actor(string UserId, IReadOnlySet<string> Roles);
 public interface IIdentityProvider { Task<Actor?> IntrospectAsync(string token, CancellationToken cancellationToken); }
 
-public sealed record OperationIdentity(string Scope, string Key, string Fingerprint);
+public sealed record OperationIdentity(string Scope, string Key, string Fingerprint, string? WorkflowId = null, int WorkflowVersion = 1);
 public sealed record SessionSnapshot(string GameId, int AdmissionVersion, string Status, IReadOnlyList<string> ReceiptIds);
 public sealed record OperationResult(string? ReceiptId = null, SessionSnapshot? Session = null);
 public sealed record SavedOperation(string Fingerprint, OperationResult Result)

@@ -12,4 +12,5 @@ public enum IntakeError
 public sealed class IntakeException(IntakeError error, string message) : Exception(message)
 {
     public IntakeError Error { get; } = error;
+    public string? CompensationResourceId { get; init; }
 }

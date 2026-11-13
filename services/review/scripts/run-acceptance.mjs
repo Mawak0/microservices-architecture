@@ -42,7 +42,7 @@ try {
   const fixtures = start(process.execPath, ['test-support/fixtures.mjs'], { FIXTURE_PORT: String(fixturePort) });
   await ready(fixtures, fixtureUrl);
   const service = start('dotnet', ['src/Olympiad.Review.Api/bin/Debug/net8.0/Olympiad.Review.Api.dll'], {
-    ASPNETCORE_URLS: serviceUrl, ASPNETCORE_ENVIRONMENT: 'ContractTests',
+    ASPNETCORE_URLS: serviceUrl, ASPNETCORE_ENVIRONMENT: 'ContractTests', Workflows__Enabled: 'false',
     Dependencies__BaseUrl: fixtureUrl, Dependencies__ClockBaseUrl: fixtureUrl,
     Dependencies__AccessToken: 'test-system', Storage__ConnectionString: await postgresConnection(directory),
     Runtime__LeaseSeconds: '60', Logging__LogLevel__Default: 'Warning'

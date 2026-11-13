@@ -17,6 +17,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "BuildingBlocks", "BuildingB
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Olympiad.Persistence.Postgres", "..\..\building-blocks\Olympiad.Persistence.Postgres\Olympiad.Persistence.Postgres.csproj", "{21363130-A754-4D64-B998-CFB13929ED21}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Olympiad.Workflows.Infrastructure", "..\..\building-blocks\Olympiad.Workflows.Infrastructure\Olympiad.Workflows.Infrastructure.csproj", "{9DF2D580-CD1F-43E1-876C-0CD197B600E4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Olympiad.Workflows.Application", "..\..\building-blocks\Olympiad.Workflows.Application\Olympiad.Workflows.Application.csproj", "{A35B000E-5D48-4B5B-AB39-AF0C5A04DE2F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Olympiad.Workflows.Domain", "..\..\building-blocks\Olympiad.Workflows.Domain\Olympiad.Workflows.Domain.csproj", "{9037D8B1-1114-48A0-A374-9ADE5A22EA45}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -50,8 +56,23 @@ Global
 		{21363130-A754-4D64-B998-CFB13929ED21}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{21363130-A754-4D64-B998-CFB13929ED21}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{21363130-A754-4D64-B998-CFB13929ED21}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9DF2D580-CD1F-43E1-876C-0CD197B600E4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9DF2D580-CD1F-43E1-876C-0CD197B600E4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9DF2D580-CD1F-43E1-876C-0CD197B600E4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9DF2D580-CD1F-43E1-876C-0CD197B600E4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A35B000E-5D48-4B5B-AB39-AF0C5A04DE2F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A35B000E-5D48-4B5B-AB39-AF0C5A04DE2F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A35B000E-5D48-4B5B-AB39-AF0C5A04DE2F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A35B000E-5D48-4B5B-AB39-AF0C5A04DE2F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9037D8B1-1114-48A0-A374-9ADE5A22EA45}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9037D8B1-1114-48A0-A374-9ADE5A22EA45}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9037D8B1-1114-48A0-A374-9ADE5A22EA45}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9037D8B1-1114-48A0-A374-9ADE5A22EA45}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{21363130-A754-4D64-B998-CFB13929ED21} = {A54D076E-AB3C-481C-AF94-397C137B32FB}
+		{9DF2D580-CD1F-43E1-876C-0CD197B600E4} = {A54D076E-AB3C-481C-AF94-397C137B32FB}
+		{A35B000E-5D48-4B5B-AB39-AF0C5A04DE2F} = {A54D076E-AB3C-481C-AF94-397C137B32FB}
+		{9037D8B1-1114-48A0-A374-9ADE5A22EA45} = {A54D076E-AB3C-481C-AF94-397C137B32FB}
 	EndGlobalSection
 EndGlobal

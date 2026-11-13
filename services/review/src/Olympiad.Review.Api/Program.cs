@@ -3,6 +3,8 @@ using Olympiad.Review.Application;
 using Olympiad.Review.Domain;
 using Olympiad.Review.Infrastructure;
 using System.Text.Json.Serialization.Metadata;
+using Olympiad.Workflows.Infrastructure;
+using Olympiad.Workflows.Application;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.ConfigureHttpJsonOptions(options =>
@@ -57,9 +59,11 @@ builder.Services.AddHostedService<BackgroundCompletion>();
 builder.Services.AddSingleton<OutboxDispatcher>();
 builder.Services.AddSingleton<IOutboxDelivery>(sp => sp.GetRequiredService<OutboxDispatcher>());
 builder.Services.AddHostedService<BackgroundPublication>();
+builder.AddReviewWorkflows();
 var app = builder.Build();
 app.UseRouting();
 app.UseMiddleware<RequestMiddleware>();
+if(app.Services.GetService<IProcessStore>() is not null) await app.UseWorkflowsAsync();
 app.MapGet("/health", () => Results.Json(new { service = "review", healthy = true }));
 CheckEndpoints.Map(app); AppealEndpoints.Map(app); CompletionEndpoints.Map(app);
 app.Run();

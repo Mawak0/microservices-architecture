@@ -60,7 +60,8 @@ internal static class Endpoints
             throw new IntakeException(IntakeError.ValidationError, "An Idempotency-Key of at most 200 characters is required.");
         var actor = (Actor)context.Items[typeof(Actor)]!;
         var fingerprint = Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(request, InputJson)));
-        return new($"{actor.UserId}:{context.Request.Method}:{context.Request.Path}", key, fingerprint);
+        var process=context.Items[typeof(Olympiad.Workflows.Domain.ProcessSnapshot)] as Olympiad.Workflows.Domain.ProcessSnapshot;
+        return new($"{actor.UserId}:{context.Request.Method}:{context.Request.Path}", key, fingerprint,process?.Id,process?.Version??1);
     }
     private sealed record AdmissionRequest { public required int AdmissionVersion { get; init; } }
     private sealed record BlankRequest

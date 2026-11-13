@@ -5,6 +5,7 @@ public sealed class Actor(string id, IEnumerable<string> roles)
 {
     public string Id { get; } = id;
     private readonly HashSet<string> roles = new(roles, StringComparer.Ordinal);
+    public IReadOnlyCollection<string> RoleNames => roles.ToArray();
     public void Require(MaterialPermission permission)
     {
         if (roles.Contains("admin")) return;

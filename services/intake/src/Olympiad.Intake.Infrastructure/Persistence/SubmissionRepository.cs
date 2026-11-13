@@ -5,7 +5,7 @@ namespace Olympiad.Intake.Infrastructure.Persistence;
 
 internal sealed class SubmissionRepository(PostgresScope db) : ISubmissionRepository
 {
-    private const string Columns = "receipt_id,blank_id,game_id,team_id,task_id,task_number,verified_image,media_type,scope,operation_key,fingerprint,worker_token,lease_until";
+    private const string Columns = "receipt_id,blank_id,game_id,team_id,task_id,task_number,verified_image,media_type,scope,operation_key,fingerprint,worker_token,lease_until,workflow_id,workflow_version";
     public Task<bool> ExistsForBlankAsync(string blankId, CancellationToken ct) => db.ExistsAsync("SELECT 1 FROM submissions WHERE blank_id=@id", ct, ("@id", blankId));
     public async Task<PendingSubmission?> FindForOperationAsync(OperationIdentity identity, CancellationToken ct)
     {
@@ -14,12 +14,13 @@ internal sealed class SubmissionRepository(PostgresScope db) : ISubmissionReposi
         return await reader.ReadAsync(ct) ? Read(reader) : null;
     }
     public Task AddAsync(PendingSubmission pending, CancellationToken ct) => db.ExecuteAsync($"""
-        INSERT INTO submissions({Columns}) VALUES(@id,@blank,@game,@team,@task,@number,@image,@media,@scope,@key,@fingerprint,@worker,@lease)
+        INSERT INTO submissions({Columns}) VALUES(@id,@blank,@game,@team,@task,@number,@image,@media,@scope,@key,@fingerprint,@worker,@lease,@workflow,@version)
         """, ct, ("@id", pending.ReceiptId), ("@blank", pending.Blank.BlankId), ("@game", pending.Blank.GameId),
         ("@team", pending.Blank.TeamId), ("@task", pending.Blank.TaskId), ("@number", pending.Blank.TaskNumber),
         ("@image", pending.Image.ToArray()), ("@media", pending.MediaType), ("@scope", pending.Operation.Scope),
         ("@key", pending.Operation.Key), ("@fingerprint", pending.Operation.Fingerprint),
-        ("@worker", pending.WorkerToken), ("@lease", PostgresScope.Timestamp(pending.LeaseUntil)));
+        ("@worker", pending.WorkerToken), ("@lease", PostgresScope.Timestamp(pending.LeaseUntil)),
+        ("@workflow", pending.Operation.WorkflowId), ("@version", pending.Operation.WorkflowVersion));
     public Task<bool> IsOwnedAsync(string receiptId, string workerToken, CancellationToken ct) => db.ExistsAsync(
         "SELECT 1 FROM submissions WHERE receipt_id=@id AND worker_token=@worker", ct, ("@id", receiptId), ("@worker", workerToken));
     public Task RemoveAsync(string receiptId, string workerToken, CancellationToken ct) => db.ExecuteAsync(
@@ -36,6 +37,6 @@ internal sealed class SubmissionRepository(PostgresScope db) : ISubmissionReposi
     }
     private static PendingSubmission Read(NpgsqlDataReader reader) => new(reader.GetString(0),
         new(reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetString(4), reader.GetString(5)),
-        reader.GetFieldValue<byte[]>(6), reader.GetString(7), new(reader.GetString(8), reader.GetString(9), reader.GetString(10)),
+        reader.GetFieldValue<byte[]>(6), reader.GetString(7), new(reader.GetString(8), reader.GetString(9), reader.GetString(10),reader.IsDBNull(13)?null:reader.GetString(13),reader.GetInt32(14)),
         reader.GetString(11), DateTimeOffset.Parse(reader.GetString(12)));
 }

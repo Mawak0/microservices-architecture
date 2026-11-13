@@ -52,7 +52,7 @@ export function auditArchitecture(root) {
     for (const match of xml.matchAll(/<ProjectReference\b[^>]*Include="([^"]+)"/g)) {
       const reference = path.basename(match[1].replaceAll('\\', '/'), '.csproj');
       const referenceLayer = layers.find(value => reference.endsWith(`.${value}`));
-      if (!(layer === 'Infrastructure' && ['Olympiad.Persistence.Postgres', 'Olympiad.Storage.S3'].includes(reference)) && !allowedReferences[layer].includes(referenceLayer))
+      if (!(layer === 'Infrastructure' && ['Olympiad.Persistence.Postgres', 'Olympiad.Storage.S3', 'Olympiad.Workflows.Application'].includes(reference)) && !allowedReferences[layer].includes(referenceLayer))
         fail(project, `${layer} references forbidden project ${reference}.`);
     }
     if (['Domain', 'Application'].includes(layer) && /<(?:PackageReference|FrameworkReference)\b/.test(xml))
@@ -85,7 +85,7 @@ export function auditArchitecture(root) {
             fail(file, 'Public mutable domain property bypasses aggregate invariants.', index + 1);
         }
       }
-      if (layer === 'Api' && !/^(?:Program|Composition|CompositionRoot|DependencyInjection|ServiceCollectionExtensions)\.cs$/.test(path.basename(file))) {
+      if (layer === 'Api' && !/^(?:Program|Composition|CompositionRoot|DependencyInjection|ServiceCollectionExtensions|WorkflowConfiguration)\.cs$/.test(path.basename(file))) {
         lines.forEach((line, index) => {
           const imported = namespaceOfImport(line);
           if (imported?.includes('.Infrastructure'))

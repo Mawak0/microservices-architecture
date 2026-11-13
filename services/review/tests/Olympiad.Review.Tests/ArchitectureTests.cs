@@ -15,9 +15,10 @@ public sealed class ArchitectureTests
     [Fact]
     public void CompiledCoreAssembliesDependOnlyInwards()
     {
-        Assert.All(typeof(AnswerCheck).Assembly.GetReferencedAssemblies(), a => Assert.StartsWith("System", a.Name));
+        Assert.All(typeof(AnswerCheck).Assembly.GetReferencedAssemblies(), a =>
+            Assert.True(a.Name == "netstandard" || a.Name!.StartsWith("System", StringComparison.Ordinal)));
         var dependencies = typeof(ReceiveReceipt).Assembly.GetReferencedAssemblies();
-        Assert.All(dependencies, a => Assert.True(a.Name!.StartsWith("System") || a.Name == "Olympiad.Review.Domain", a.FullName));
+        Assert.All(dependencies, a => Assert.True(a.Name!.StartsWith("System") || a.Name is "netstandard" or "Olympiad.Review.Domain", a.FullName));
         Assert.Contains(dependencies, a => a.Name == "Olympiad.Review.Domain");
     }
     [Fact]

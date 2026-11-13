@@ -7,7 +7,7 @@ CREATE INDEX IF NOT EXISTS receipts_game ON receipts(game_id);
 CREATE TABLE IF NOT EXISTS submissions(receipt_id TEXT PRIMARY KEY, blank_id TEXT UNIQUE NOT NULL, game_id TEXT NOT NULL,
 team_id TEXT NOT NULL, task_id TEXT NOT NULL, task_number TEXT NOT NULL, verified_image BYTEA NOT NULL,
 media_type TEXT NOT NULL, scope TEXT NOT NULL, operation_key TEXT NOT NULL, fingerprint TEXT NOT NULL,
-worker_token TEXT NOT NULL, lease_until TEXT NOT NULL, UNIQUE(scope,operation_key));
+worker_token TEXT NOT NULL, lease_until TEXT NOT NULL, workflow_id TEXT, workflow_version INTEGER NOT NULL, UNIQUE(scope,operation_key));
 CREATE INDEX IF NOT EXISTS submissions_lease ON submissions(lease_until);
 CREATE TABLE IF NOT EXISTS operations(scope TEXT NOT NULL, operation_key TEXT NOT NULL, fingerprint TEXT NOT NULL,
 result_json TEXT NOT NULL, PRIMARY KEY(scope,operation_key));

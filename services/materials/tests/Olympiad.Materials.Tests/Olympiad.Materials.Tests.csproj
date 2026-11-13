@@ -13,4 +13,5 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2"><PrivateAssets>all</PrivateAssets></PackageReference>
     <PackageReference Include="PdfPig" Version="0.1.11" />
   </ItemGroup>
+  <ItemGroup><Compile Include="../../../../tests/support/DurableHttp.cs" Link="DurableHttp.cs" /></ItemGroup>
 </Project>

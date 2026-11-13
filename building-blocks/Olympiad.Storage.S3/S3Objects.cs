@@ -70,6 +70,16 @@ public sealed class S3Objects(IAmazonS3 client, string bucket)
         return new(expected, bytes);
     }
     public Task DeleteAsync(string key, CancellationToken ct) => client.DeleteObjectAsync(bucket, key, ct);
+    public async Task DeleteOwnerAsync(string owner,CancellationToken ct)
+    {
+        var prefix=Key(owner,""); string? continuation=null;
+        do
+        {
+            var page=await client.ListObjectsV2Async(new ListObjectsV2Request { BucketName=bucket,Prefix=prefix,ContinuationToken=continuation },ct);
+            foreach(var item in page.S3Objects) await DeleteAsync(item.Key,ct);
+            continuation=page.IsTruncated?page.NextContinuationToken:null;
+        } while(continuation is not null);
+    }
     public async Task<IReadOnlyList<string>> ListOlderThanAsync(DateTimeOffset cutoff, CancellationToken ct)
     {
         var result = new List<string>(); string? continuation = null;

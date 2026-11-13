@@ -42,7 +42,7 @@ try {
   const fixture = start(process.execPath, ['test-support/fixtures.mjs'], { ...process.env, FIXTURE_PORT: String(fixturePort) });
   await ready(fixture, fixtureBase);
   const serviceEnvironment = {
-    ...process.env, ASPNETCORE_ENVIRONMENT: 'ContractTests', ASPNETCORE_URLS: serviceBase,
+    ...process.env, ASPNETCORE_ENVIRONMENT: 'ContractTests', Workflows__Enabled: 'false', ASPNETCORE_URLS: serviceBase,
     Dependencies__BaseUrl: fixtureBase, Dependencies__ClockBaseUrl: fixtureBase, Dependencies__AccessToken: 'test-system',
     Storage__ConnectionString: await postgresConnection(directory),
     Logging__LogLevel__Default: 'Warning'
