@@ -5,7 +5,7 @@ public sealed record HistoryView(string Verdict, string ActorId, DateTimeOffset 
 public sealed record CheckView(string Id, string ReceiptId, string BlankId, string GameId,
     int AdmissionVersion, string TeamId, string ImageRef, string TaskId, string TaskNumber,
     string ReferenceAnswer, string Status, string? AssignedTo, LeaseView? Lease,
-    string? OriginalVerdict, string? Verdict, int Revision, IReadOnlyList<HistoryView> History)
+    string? OriginalVerdict, string? Verdict, int Revision, IReadOnlyList<HistoryView> History, int ImageVersion = 1)
 {
     public static CheckView From(AnswerCheck c) => new(c.Id, c.Receipt.Id, c.Receipt.BlankId,
         c.Receipt.GameId, c.Receipt.AdmissionVersion, c.Receipt.TeamId, c.Receipt.ImageRef,
@@ -15,17 +15,18 @@ public sealed record CheckView(string Id, string ReceiptId, string BlankId, stri
             CheckStage.Checking => "checking",
             CheckStage.Checked => "checked",
             CheckStage.AppealPending => "appeal-pending",
-            _ => "appeal-checking"
+            CheckStage.AppealChecking => "appeal-checking",
+            _ => "awaiting-retake"
         }, c.Assignment?.ActorId,
         c.Assignment is null ? null : new(c.Assignment.Token, c.Assignment.ExpiresAt),
         c.OriginalVerdict?.Wire(), c.Verdict?.Wire(), c.Revision,
-        c.History.Select(h => new HistoryView(h.Verdict.Wire(), h.ActorId, h.RecordedAt, h.Reason)).ToArray());
+        c.History.Select(h => new HistoryView(h.Verdict.Wire(), h.ActorId, h.RecordedAt, h.Reason)).ToArray(), c.Receipt.ImageVersion);
 }
-public sealed record AppealView(string Id, string CheckId, string Status, string? Outcome, CheckView Check)
+public sealed record AppealView(string Id, string CheckId, string Status, string? Outcome, CheckView Check, string? Reason = null)
 {
     public static AppealView From(Appeal appeal, AnswerCheck check) => new(appeal.Id, appeal.CheckId,
         appeal.Resolved ? "resolved" : check.Stage == CheckStage.AppealChecking ? "checking" : "pending",
-        appeal.Outcome, CheckView.From(check));
+        appeal.Outcome, CheckView.From(check), appeal.Snapshot().Reason);
 }
 public sealed record QuotaView(string GameId, int Limit, int Used, int Remaining)
 {
@@ -44,7 +45,7 @@ public static class OutgoingEvents
     public static void Verdict(IEventOutbox events, AnswerCheck c, string type, DateTimeOffset now) =>
         events.Add(new(Guid.NewGuid().ToString(), type, now, c.Id, new VerdictEventData(
             c.Receipt.GameId, c.Receipt.AdmissionVersion, c.Id, c.Receipt.Id, c.Receipt.BlankId,
-            c.Receipt.TeamId, c.Receipt.TaskId, c.Verdict!.Value.Wire(), c.Revision)));
+            c.Receipt.TeamId, c.Receipt.TaskId, c.Verdict!.Value.Wire(), c.Revision, c.Receipt.ImageVersion)));
     public static void Appeal(IEventOutbox events, Appeal appeal, AnswerCheck c,
         string type, DateTimeOffset now) => events.Add(new(Guid.NewGuid().ToString(), type, now, appeal.Id,
             new AppealEventData(c.Receipt.GameId, c.Receipt.AdmissionVersion,

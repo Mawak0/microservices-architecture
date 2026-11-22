@@ -652,6 +652,132 @@
           }
         }
       }
+    },
+    "/receipts/{id}/retakes": {
+      "post": {
+        "operationId": "uploadRetake",
+        "x-roles": [
+          "observer",
+          "admin"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Актуальный результат"
+          },
+          "401": {
+            "description": "Требуется вход"
+          },
+          "403": {
+            "description": "Недостаточно прав"
+          },
+          "404": {
+            "description": "Объект недоступен"
+          },
+          "409": {
+            "description": "Конфликт состояния"
+          },
+          "422": {
+            "description": "Неверные параметры"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "checkId",
+                  "retakeId",
+                  "qrToken",
+                  "imageBase64",
+                  "imageMediaType",
+                  "legibilityConfirmed"
+                ],
+                "properties": {
+                  "checkId": {
+                    "type": "string"
+                  },
+                  "retakeId": {
+                    "type": "string"
+                  },
+                  "qrToken": {
+                    "type": "string"
+                  },
+                  "imageBase64": {
+                    "type": "string"
+                  },
+                  "imageMediaType": {
+                    "type": "string"
+                  },
+                  "legibilityConfirmed": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/receipts/{id}/image/versions/{version}": {
+      "get": {
+        "operationId": "readImageVersion",
+        "x-roles": [
+          "observer",
+          "checker",
+          "integration",
+          "admin"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Актуальный результат"
+          },
+          "401": {
+            "description": "Требуется вход"
+          },
+          "403": {
+            "description": "Недостаточно прав"
+          },
+          "404": {
+            "description": "Объект недоступен"
+          },
+          "409": {
+            "description": "Конфликт состояния"
+          },
+          "422": {
+            "description": "Неверные параметры"
+          }
+        }
+      }
     }
   },
   "components": {

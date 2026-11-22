@@ -14,7 +14,8 @@
         "AppealOpened",
         "AppealResolved",
         "AppealUsageReturned",
-        "AllChecksCompleted"
+        "AllChecksCompleted",
+        "VerdictWithdrawnForRetake"
       ]
     },
     "data": {
@@ -86,6 +87,10 @@
               ]
             },
             "revision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "imageVersion": {
               "type": "integer",
               "minimum": 1
             }
@@ -195,6 +200,49 @@
               "items": {
                 "type": "string"
               }
+            }
+          }
+        }
+      }
+    },
+    {
+      "properties": {
+        "type": {
+          "const": "VerdictWithdrawnForRetake"
+        },
+        "data": {
+          "required": [
+            "checkId",
+            "receiptId",
+            "blankId",
+            "teamId",
+            "taskId",
+            "imageVersion",
+            "revision"
+          ],
+          "properties": {
+            "checkId": {
+              "type": "string"
+            },
+            "receiptId": {
+              "type": "string"
+            },
+            "blankId": {
+              "type": "string"
+            },
+            "teamId": {
+              "type": "string"
+            },
+            "taskId": {
+              "type": "string"
+            },
+            "imageVersion": {
+              "type": "integer",
+              "minimum": 2
+            },
+            "revision": {
+              "type": "integer",
+              "minimum": 1
             }
           }
         }

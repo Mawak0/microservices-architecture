@@ -52,9 +52,10 @@ internal static class Composition
             services.AddSingleton<IImageStorage>(provider => provider.GetRequiredService<S3ImageStorage>());
             services.AddSingleton<IImageReader>(provider => provider.GetRequiredService<S3ImageStorage>());
         }
+        AddDependency<IRetakeAuthorization>("Review", client => new HttpRetakeAuthorization(client));
+        services.AddSingleton<RetakeUpload>();
         if(objects is not null && builder.Configuration.GetValue("Workflows:Enabled",true))
         {
-            services.AddKeyedSingleton<HttpClient>("Review",(_,_)=>Client("Review"));
             services.AddSingleton<IEventPublisher>(provider=>new ReviewDelivery(provider.GetRequiredKeyedService<HttpClient>("Review"),
                 provider.GetRequiredService<Olympiad.Workflows.Application.IProcessStore>(),provider.GetRequiredService<S3Objects>()));
         }

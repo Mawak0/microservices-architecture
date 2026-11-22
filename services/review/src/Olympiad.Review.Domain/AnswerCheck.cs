@@ -1,31 +1,33 @@
 namespace Olympiad.Review.Domain;
-public enum CheckStage { Pending, Checking, Checked, AppealPending, AppealChecking }
+public enum CheckStage { Pending, Checking, Checked, AppealPending, AppealChecking, AwaitingRetake }
 public sealed record Receipt(string Id, string BlankId, string GameId, int AdmissionVersion,
-    string TeamId, string TaskId, string TaskNumber, string ImageRef, DateTimeOffset AcceptedAt);
+    string TeamId, string TaskId, string TaskNumber, string ImageRef, DateTimeOffset AcceptedAt, int ImageVersion = 1);
 public sealed record Assignment(string Token, string ActorId, DateTimeOffset ExpiresAt);
 public sealed record ExpiredAssignment(string Token, bool Expired);
-public sealed record VerdictRecord(Verdict Verdict, string ActorId, DateTimeOffset RecordedAt, string? Reason);
+public sealed record VerdictRecord(Verdict Verdict, string ActorId, DateTimeOffset RecordedAt, string? Reason, int ImageVersion = 1);
 public sealed record CheckSnapshot(string Id, Receipt Receipt, string ReferenceAnswer, CheckStage Stage, Assignment? Assignment,
     IReadOnlyList<ExpiredAssignment> PreviousAssignments, Verdict? OriginalVerdict,
-    Verdict? Verdict, IReadOnlyList<VerdictRecord> History);
+    Verdict? Verdict, IReadOnlyList<VerdictRecord> History, PhotoRetake? Retake = null);
 
 /// <summary>One received answer and its fenced ownership; owns every verdict revision.</summary>
-public sealed class AnswerCheck
+public sealed partial class AnswerCheck
 {
     private readonly List<ExpiredAssignment> previous;
     private readonly List<VerdictRecord> history;
     public string Id { get; }
-    public Receipt Receipt { get; }
+    public Receipt Receipt { get; private set; }
     public string ReferenceAnswer { get; }
     public CheckStage Stage { get; private set; }
     public Assignment? Assignment { get; private set; }
     public Verdict? OriginalVerdict { get; private set; }
     public Verdict? Verdict { get; private set; }
     public int Revision => history.Count;
+    public PhotoRetake? Retake { get; private set; }
     public IReadOnlyList<VerdictRecord> History => history.AsReadOnly();
     private AnswerCheck(CheckSnapshot snapshot)
     {
         Id = snapshot.Id; Receipt = snapshot.Receipt; ReferenceAnswer = snapshot.ReferenceAnswer; Stage = snapshot.Stage;
+        Retake = snapshot.Retake;
         Assignment = snapshot.Assignment; OriginalVerdict = snapshot.OriginalVerdict; Verdict = snapshot.Verdict;
         previous = [.. snapshot.PreviousAssignments]; history = [.. snapshot.History];
     }
@@ -39,7 +41,7 @@ public sealed class AnswerCheck
     }
     public static AnswerCheck Restore(CheckSnapshot snapshot) => new(snapshot);
     public CheckSnapshot Snapshot() => new(Id, Receipt, ReferenceAnswer, Stage, Assignment, previous.ToArray(),
-        OriginalVerdict, Verdict, history.ToArray());
+        OriginalVerdict, Verdict, history.ToArray(), Retake);
     public bool Expire(DateTimeOffset now)
     {
         if (Assignment is null || now < Assignment.ExpiresAt) return false;
@@ -71,12 +73,12 @@ public sealed class AnswerCheck
     {
         RequireOwner(actorId, token, now);
         if (Stage != CheckStage.Checking) throw new DomainFailure("CHECK_ALREADY_ASSIGNED");
-        Append(verdict, actorId, now, null); OriginalVerdict = verdict;
+        Append(verdict, actorId, now, null); OriginalVerdict ??= verdict;
         Invalidate(); Stage = CheckStage.Checked;
     }
     public void OpenAppeal()
     {
-        if (OriginalVerdict is null || Stage != CheckStage.Checked) throw new DomainFailure("CHECK_NOT_REVIEWED");
+        if (Verdict is null || Stage != CheckStage.Checked) throw new DomainFailure("CHECK_NOT_REVIEWED");
         Stage = CheckStage.AppealPending;
     }
     public void ResolveAppeal(bool corrected, Verdict? verdict, string actorId, string token,
@@ -88,21 +90,23 @@ public sealed class AnswerCheck
         if (corrected)
         {
             if (verdict is null) throw new DomainFailure("CORRECTION_REQUIRED", FailureKind.Validation);
-            if (verdict == Verdict) throw new DomainFailure("VERDICT_UNCHANGED", FailureKind.Validation);
+            if (verdict == (Verdict ?? history.LastOrDefault()?.Verdict)) throw new DomainFailure("VERDICT_UNCHANGED", FailureKind.Validation);
             Append(verdict.Value, actorId, now, reason);
         }
+        else if (Verdict is null)
+            Append(history[^1].Verdict, actorId, now, reason);
         Invalidate(); Stage = CheckStage.Checked;
     }
     public void Correct(Verdict verdict, string actorId, DateTimeOffset now, string reason)
     {
-        if (OriginalVerdict is null) throw new DomainFailure("CHECK_NOT_REVIEWED");
+        if (Verdict is null || Retake is not null) throw new DomainFailure("CHECK_NOT_REVIEWED");
         Append(verdict, actorId, now, Required.Text(reason));
         var appealed = Stage is CheckStage.AppealChecking or CheckStage.AppealPending;
         Invalidate(); Stage = appealed ? CheckStage.AppealPending : CheckStage.Checked;
     }
     private void Append(Verdict verdict, string actor, DateTimeOffset at, string? reason)
     {
-        Verdict = verdict; history.Add(new(verdict, Required.Text(actor), at, reason));
+        Verdict = verdict; history.Add(new(verdict, Required.Text(actor), at, reason, Receipt.ImageVersion));
     }
     private void Invalidate()
     {

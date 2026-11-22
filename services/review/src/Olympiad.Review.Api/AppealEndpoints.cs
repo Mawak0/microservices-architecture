@@ -8,8 +8,12 @@ internal static class AppealEndpoints
         app.MapPost("/appeals", async (HttpContext c, OpenAppeal handler) =>
         {
             var request = await Transport.Body<AppealRequest>(c);
-            return Transport.Reply(await handler.Execute(await Transport.Identity(c),
-                Required.Text(request.CheckId), Required.Text(request.Reason), c.RequestAborted));
+            var result = await handler.Execute(await Transport.Identity(c),
+                Required.Text(request.CheckId), Required.Text(request.Reason), c.RequestAborted);
+            return Transport.Reply(result with { Value = result.Value with
+            {
+                Check = result.Value.Check with { ReferenceAnswer = "", Lease = null }
+            } });
         }).WithMetadata(new Roles("observer"));
         app.MapGet("/appeals/{id}", async (string id, HttpContext c, AppealAssignments handler) =>
             Results.Json(await handler.Get(id, c.RequestAborted))).WithMetadata(new Roles("checker", "integration"));

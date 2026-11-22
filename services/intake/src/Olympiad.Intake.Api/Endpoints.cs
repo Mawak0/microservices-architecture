@@ -60,6 +60,24 @@ internal static class Endpoints
             var request = await ReadAsync<PreviewRequest>(c);
             return Results.Ok(await handler.ExecuteAsync(Required(request.GameId), Required(request.QrToken), c.RequestAborted));
         }).WithMetadata(new RequiredRoles("observer"));
+        app.MapPost("/receipts/{id}/retakes", async (string id, HttpContext c, RetakeUpload handler) =>
+        {
+            var request = await ReadAsync<RetakeUploadRequest>(c);
+            byte[] bytes;
+            try { bytes = Convert.FromBase64String(Required(request.ImageBase64)); }
+            catch (FormatException) { throw new IntakeException(IntakeError.InvalidImage, "Image is not valid base64."); }
+            var actor = (Actor)c.Items[typeof(Actor)]!;
+            var result = await handler.ExecuteAsync(id, new(Required(request.CheckId), Required(request.RetakeId),
+                Required(request.QrToken), bytes, Required(request.ImageMediaType), request.LegibilityConfirmed),
+                actor.UserId, Identity(c, request), c.RequestAborted);
+            return Results.Ok(result);
+        }).WithMetadata(new RequiredRoles("observer"));
+        app.MapGet("/receipts/{id}/image/versions/{version:int}", async (string id, int version, HttpContext c, GetImage handler) =>
+        {
+            ValidateVersion(version);
+            var image = await handler.ExecuteAsync(id, c.RequestAborted, version);
+            return Results.File(image.Bytes, image.ContentType);
+        }).WithMetadata(new RequiredRoles("observer", "checker", "integration"));
         app.MapGet("/receipts/{id}", async (string id, HttpContext context, GetReceipt useCase) =>
             Results.Ok(ReceiptResponse.From(await useCase.ExecuteAsync(id, context.RequestAborted))))
             .WithMetadata(new RequiredRoles("observer", "checker", "integration"));
@@ -73,6 +91,15 @@ internal static class Endpoints
         ?? throw new IntakeException(IntakeError.ValidationError, "A request body is required.");
     private static string Required(string? value) => !string.IsNullOrWhiteSpace(value) ? value
         : throw new IntakeException(IntakeError.ValidationError, "A nonempty identifier is required.");
+    private sealed record RetakeUploadRequest
+    {
+        public required string CheckId { get; init; }
+        public required string RetakeId { get; init; }
+        public required string QrToken { get; init; }
+        public required string ImageBase64 { get; init; }
+        public required string ImageMediaType { get; init; }
+        public required bool LegibilityConfirmed { get; init; }
+    }
     private sealed record PreviewRequest(string GameId, string QrToken);
     private static void ValidateVersion(int version)
     { if (version < 1) throw new IntakeException(IntakeError.ValidationError, "Admission version must be positive."); }

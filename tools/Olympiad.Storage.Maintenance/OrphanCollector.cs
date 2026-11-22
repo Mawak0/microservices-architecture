@@ -24,7 +24,7 @@ public sealed class OrphanCollector(PostgresStore database,S3Objects objects,str
         }
         var references=new HashSet<string>(StringComparer.Ordinal);
         var protectedPrefixes=new List<string>();
-        await using(var keys=new NpgsqlCommand(service=="materials"?"SELECT object_key FROM pdf_artifacts":"SELECT object_key FROM receipts",connection))
+        await using(var keys=new NpgsqlCommand(service=="materials"?"SELECT object_key FROM pdf_artifacts":"SELECT object_key FROM receipts UNION SELECT object_key FROM receipt_images",connection))
         await using(var reader=await keys.ExecuteReaderAsync(ct))
             while(await reader.ReadAsync(ct)) references.Add(reader.GetString(0));
         if(service=="materials")

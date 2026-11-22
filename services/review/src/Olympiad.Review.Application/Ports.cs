@@ -55,7 +55,7 @@ public interface IOutboxDelivery { Task<int> Drain(CancellationToken cancellatio
 
 public abstract record EventData(string GameId, int AdmissionVersion);
 public sealed record VerdictEventData(string GameId, int AdmissionVersion, string CheckId,
-    string ReceiptId, string BlankId, string TeamId, string TaskId, string Verdict, int Revision)
+    string ReceiptId, string BlankId, string TeamId, string TaskId, string Verdict, int Revision, int ImageVersion = 1)
     : EventData(GameId, AdmissionVersion);
 public sealed record AppealEventData(string GameId, int AdmissionVersion, string AppealId,
     string CheckId, string TeamId, string TaskId, string? Outcome = null)

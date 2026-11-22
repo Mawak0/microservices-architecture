@@ -25,6 +25,8 @@ internal static class Errors
         IntakeError.NotFound => (404, "NOT_FOUND"),
         IntakeError.StorageUnavailable => (503, "STORAGE_UNAVAILABLE"),
         IntakeError.DependencyUnavailable => (503, "DEPENDENCY_UNAVAILABLE"),
+        IntakeError.RetakeApprovalRequired => (409, "RETAKE_APPROVAL_REQUIRED"),
+        IntakeError.RetakeConflict => (409, "RETAKE_CONFLICT"),
         IntakeError.IntakeBusy => (503, "INTAKE_BUSY"),
         _ => throw new ArgumentOutOfRangeException(nameof(error))
     };

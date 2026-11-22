@@ -31,7 +31,9 @@ internal sealed class ReceiptRepository(PostgresScope db) : IReceiptRepository
     }
     public Task AddAsync(Receipt receipt, ReadOnlyMemory<byte> verifiedImage, string mediaType, CancellationToken ct) => db.ExecuteAsync("""
         INSERT INTO receipts(id,blank_id,game_id,team_id,task_id,task_number,admission_version,image_ref,accepted_at,object_key,media_type,image_size,image_sha256)
-        VALUES(@id,@blank,@game,@team,@task,@number,@version,@image,@accepted,@key,@media,@size,@sha)
+        VALUES(@id,@blank,@game,@team,@task,@number,@version,@image,@accepted,@key,@media,@size,@sha);
+        INSERT INTO receipt_images(receipt_id,version,uploaded_at,object_key,media_type,image_size,image_sha256,download_ref)
+        VALUES(@id,1,CAST(@accepted AS timestamptz),@key,@media,@size,@sha,@image);
         """, ct, ("@id", receipt.Id), ("@blank", receipt.Blank.BlankId), ("@game", receipt.Blank.GameId),
         ("@team", receipt.Blank.TeamId), ("@task", receipt.Blank.TaskId), ("@number", receipt.Blank.TaskNumber),
         ("@version", receipt.AdmissionVersion), ("@image", receipt.ImageRef), ("@accepted", PostgresScope.Timestamp(receipt.AcceptedAt)),

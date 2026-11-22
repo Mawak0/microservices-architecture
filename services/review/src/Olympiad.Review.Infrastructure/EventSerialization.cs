@@ -20,6 +20,7 @@ internal static class EventSerialization
             "VerdictIssued" or "VerdictCorrected" => typeof(VerdictEventData),
             "AppealOpened" or "AppealResolved" => typeof(AppealEventData),
             "AppealUsageReturned" => typeof(ReturnedUsageData),
+            "VerdictWithdrawnForRetake" => typeof(WithdrawnVerdictData),
             "AllChecksCompleted" => typeof(CompletionEventData),
             _ => throw new InvalidOperationException("Unknown outbox event type.")
         };

@@ -6,7 +6,7 @@ public enum IntakeError
     LegibilityNotConfirmed, BlankAlreadyAccepted, IntakeClosed,
     TeamNotAdmitted, StorageUnavailable, DependencyUnavailable,
     IdempotencyKeyReused, AdmissionVersionMismatch, DeadlineNotReached,
-    LateAdmissionActive, NotFound, IntakeBusy
+    LateAdmissionActive, NotFound, IntakeBusy, RetakeApprovalRequired, RetakeConflict
 }
 
 public sealed class IntakeException(IntakeError error, string message) : Exception(message)

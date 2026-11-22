@@ -20,7 +20,7 @@ public interface IIdentityProvider { Task<Actor?> IntrospectAsync(string token, 
 
 public sealed record OperationIdentity(string Scope, string Key, string Fingerprint, string? WorkflowId = null, int WorkflowVersion = 1);
 public sealed record SessionSnapshot(string GameId, int AdmissionVersion, string Status, IReadOnlyList<string> ReceiptIds);
-public sealed record OperationResult(string? ReceiptId = null, SessionSnapshot? Session = null);
+public sealed record OperationResult(string? ReceiptId = null, SessionSnapshot? Session = null, int? ImageVersion = null);
 public sealed record SavedOperation(string Fingerprint, OperationResult Result)
 {
     public OperationResult Match(OperationIdentity identity)
@@ -73,6 +73,7 @@ public interface IIntakeTransaction
 {
     ISessionRepository Sessions { get; }
     IReceiptRepository Receipts { get; }
+    IReceiptImageVersions Images { get; }
     ISubmissionRepository Submissions { get; }
     IOperationRepository Operations { get; }
     IOutboxRepository Outbox { get; }

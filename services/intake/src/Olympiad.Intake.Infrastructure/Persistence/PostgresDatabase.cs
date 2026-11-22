@@ -20,6 +20,7 @@ public sealed class PostgresDatabase : IIntakeUnitOfWork
     {
         public ISessionRepository Sessions { get; } = new SessionRepository(scope);
         public IReceiptRepository Receipts { get; } = new ReceiptRepository(scope);
+        public IReceiptImageVersions Images { get; } = new ReceiptImageVersions(scope);
         public ISubmissionRepository Submissions { get; } = new SubmissionRepository(scope);
         public IOperationRepository Operations { get; } = new OperationRepository(scope);
         public IOutboxRepository Outbox { get; } = new OutboxRepository(scope);

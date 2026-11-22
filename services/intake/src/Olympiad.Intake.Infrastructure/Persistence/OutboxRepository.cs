@@ -42,6 +42,7 @@ public static class EventSerialization
         return document.RootElement.GetProperty("type").GetString() switch
         {
             nameof(ReceiptAccepted) => JsonSerializer.Deserialize<ReceiptAccepted>(json, Options)!,
+            nameof(RetakeImageStored) => JsonSerializer.Deserialize<RetakeImageStored>(json, Options)!,
             nameof(IntakeClosed) => JsonSerializer.Deserialize<IntakeClosed>(json, Options)!,
             nameof(UploadAbandoned) => JsonSerializer.Deserialize<UploadAbandoned>(json, Options)!,
             _ => throw new InvalidOperationException("Unsupported persisted event type.")

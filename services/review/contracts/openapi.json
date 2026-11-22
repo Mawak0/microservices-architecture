@@ -1710,6 +1710,341 @@
           }
         }
       }
+    },
+    "/checks/{id}/self-correction": {
+      "post": {
+        "operationId": "selfCorrectVerdict",
+        "x-roles": [
+          "checker",
+          "admin"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Актуальный результат"
+          },
+          "401": {
+            "description": "Требуется вход"
+          },
+          "403": {
+            "description": "Недостаточно прав"
+          },
+          "404": {
+            "description": "Объект недоступен"
+          },
+          "409": {
+            "description": "Конфликт состояния"
+          },
+          "422": {
+            "description": "Неверные параметры"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "revision",
+                  "verdict"
+                ],
+                "properties": {
+                  "revision": {
+                    "type": "integer"
+                  },
+                  "verdict": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/checks/{id}/retakes": {
+      "post": {
+        "operationId": "requestRetake",
+        "x-roles": [
+          "checker",
+          "admin"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Актуальный результат"
+          },
+          "401": {
+            "description": "Требуется вход"
+          },
+          "403": {
+            "description": "Недостаточно прав"
+          },
+          "404": {
+            "description": "Объект недоступен"
+          },
+          "409": {
+            "description": "Конфликт состояния"
+          },
+          "422": {
+            "description": "Неверные параметры"
+          },
+          "201": {
+            "description": "Запрос пересъёмки создан"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "revision"
+                ],
+                "properties": {
+                  "revision": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/checks/{id}/retakes/{requestId}/approve": {
+      "post": {
+        "operationId": "approveRetake",
+        "x-roles": [
+          "admin"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Актуальный результат"
+          },
+          "401": {
+            "description": "Требуется вход"
+          },
+          "403": {
+            "description": "Недостаточно прав"
+          },
+          "404": {
+            "description": "Объект недоступен"
+          },
+          "409": {
+            "description": "Конфликт состояния"
+          },
+          "422": {
+            "description": "Неверные параметры"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "reason"
+                ],
+                "properties": {
+                  "reason": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/retakes": {
+      "get": {
+        "operationId": "listRetakes",
+        "x-roles": [
+          "observer",
+          "admin"
+        ],
+        "parameters": [
+          {
+            "name": "gameId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Актуальный результат"
+          },
+          "401": {
+            "description": "Требуется вход"
+          },
+          "403": {
+            "description": "Недостаточно прав"
+          },
+          "404": {
+            "description": "Объект недоступен"
+          },
+          "409": {
+            "description": "Конфликт состояния"
+          },
+          "422": {
+            "description": "Неверные параметры"
+          }
+        }
+      }
+    },
+    "/integrations/retakes/{id}/{requestId}": {
+      "get": {
+        "operationId": "getRetakeTicket",
+        "x-roles": [
+          "integration",
+          "admin"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Актуальный результат"
+          },
+          "401": {
+            "description": "Требуется вход"
+          },
+          "403": {
+            "description": "Недостаточно прав"
+          },
+          "404": {
+            "description": "Объект недоступен"
+          },
+          "409": {
+            "description": "Конфликт состояния"
+          },
+          "422": {
+            "description": "Неверные параметры"
+          }
+        }
+      }
+    },
+    "/integrations/retake-images": {
+      "post": {
+        "operationId": "registerRetakeImage",
+        "x-roles": [
+          "integration",
+          "admin"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Актуальный результат"
+          },
+          "401": {
+            "description": "Требуется вход"
+          },
+          "403": {
+            "description": "Недостаточно прав"
+          },
+          "404": {
+            "description": "Объект недоступен"
+          },
+          "409": {
+            "description": "Конфликт состояния"
+          },
+          "422": {
+            "description": "Неверные параметры"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "eventId",
+                  "type",
+                  "aggregateId",
+                  "occurredAt",
+                  "data"
+                ],
+                "properties": {
+                  "eventId": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
+                  },
+                  "aggregateId": {
+                    "type": "string"
+                  },
+                  "occurredAt": {
+                    "type": "string"
+                  },
+                  "data": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1825,6 +2160,13 @@
           "reason": {
             "type": "string",
             "minLength": 1
+          },
+          "revision": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
           }
         }
       },
@@ -1882,7 +2224,8 @@
               "checking",
               "checked",
               "appeal-pending",
-              "appeal-checking"
+              "appeal-checking",
+              "awaiting-retake"
             ]
           },
           "assignedTo": {
@@ -1948,6 +2291,10 @@
           },
           "lease": {
             "$ref": "#/components/schemas/AssignmentLease"
+          },
+          "imageVersion": {
+            "type": "integer",
+            "minimum": 1
           }
         }
       },
@@ -2008,6 +2355,12 @@
           },
           "check": {
             "$ref": "#/components/schemas/Check"
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       },

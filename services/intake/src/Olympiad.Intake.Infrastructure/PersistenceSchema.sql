@@ -16,3 +16,19 @@ lease_until TEXT, worker_token TEXT, delivered INTEGER NOT NULL DEFAULT 0);
 CREATE INDEX IF NOT EXISTS outbox_ready ON outbox(delivered,available_at,lease_until);
 CREATE INDEX IF NOT EXISTS receipts_game_search ON receipts(game_id,accepted_at DESC,id);
 CREATE INDEX IF NOT EXISTS receipts_team_task_search ON receipts(game_id,team_id,task_id);
+CREATE TABLE IF NOT EXISTS receipt_images(
+    receipt_id TEXT NOT NULL REFERENCES receipts(id),
+    version INTEGER NOT NULL CHECK(version>0),
+    request_id TEXT UNIQUE,
+    uploaded_by TEXT,
+    uploaded_at TIMESTAMPTZ NOT NULL,
+    object_key TEXT NOT NULL,
+    media_type TEXT NOT NULL,
+    image_size BIGINT NOT NULL CHECK(image_size>0),
+    image_sha256 TEXT NOT NULL,
+    download_ref TEXT NOT NULL,
+    PRIMARY KEY(receipt_id,version)
+);
+INSERT INTO receipt_images(receipt_id,version,uploaded_at,object_key,media_type,image_size,image_sha256,download_ref)
+SELECT id,1,accepted_at::timestamptz,object_key,media_type,image_size,image_sha256,image_ref FROM receipts
+ON CONFLICT(receipt_id,version) DO NOTHING;

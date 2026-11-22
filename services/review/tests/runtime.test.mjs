@@ -134,3 +134,44 @@ test('Queue counts, indexed claims, private search and recovery of assignments',
   await expireLease(leases[0]);
   assert.equal(expectStatus(await api('GET', '/review-queues?gameId=' + game, { role: 'checker' }), 200).answers, s.receipts.length);
 });
+
+test('Self-correction is fenced by actor and revision and stopped when an appeal starts', async () => {
+  const { s, id, check, path } = await assignedWork('checks');
+  const verdict = expectStatus(await api('POST', path + '/verdict',
+    { role: 'checker', assignmentToken: check.lease.token, body: { verdict: 'incorrect' } }), 200);
+  const command = { body: { revision: verdict.revision, verdict: 'correct' } };
+  expectError(await api('POST', path + '/self-correction', { ...command, role: 'checker-2' }), 409, 'SELF_CORRECTION_NOT_AVAILABLE');
+  const applied = expectStatus(await api('POST', path + '/self-correction', { ...command, role: 'checker' }), 200);
+  assert.equal(applied.originalVerdict, 'incorrect');
+  assert.equal(applied.verdict, 'correct');
+  expectError(await api('POST', path + '/self-correction', { ...command, role: 'checker' }), 409, 'REVISION_CONFLICT');
+  const appeal = expectStatus(await api('POST', '/appeals', { role: 'observer',
+    body: { checkId: id, reason: 'Проверить ещё раз' } }), 201);
+  assert.equal(appeal.check.referenceAnswer, '');
+  expectError(await api('POST', path + '/self-correction', { role: 'checker',
+    body: { revision: applied.revision, verdict: 'incorrect' } }), 409, 'SELF_CORRECTION_NOT_AVAILABLE');
+  assert.equal((await getQuota(s)).used, 1);
+});
+
+test('Retake releases a lease, requires a matching event and resumes only the new photo', async () => {
+  const { s, id, check, path } = await assignedWork('checks');
+  const requested = expectStatus(await api('POST', path + '/retakes', { role: 'checker',
+    assignmentToken: check.lease.token, body: { revision: check.revision } }), 201);
+  expectError(await api('POST', path + '/verdict', { role: 'checker',
+    assignmentToken: check.lease.token, body: { verdict: 'correct' } }), 409, 'STALE_ASSIGNMENT');
+  assert.deepEqual(expectStatus(await api('GET', '/retakes?gameId=' + s.game.id, { role: 'observer' }), 200).items, [requested]);
+  assert.equal((await api('POST', '/checks/next', { role: 'checker', body: { gameId: s.game.id } })).status, 204);
+  const body = { eventId: key(), type: 'RetakeImageStored', aggregateId: check.receiptId, occurredAt: await clockNow(),
+    data: { retakeId: requested.id, checkId: id, receiptId: check.receiptId, blankId: check.blankId,
+      gameId: check.gameId, imageVersion: 2, admissionVersion: check.admissionVersion } };
+  const apply = (body, role = 'system') => api('POST', '/integrations/retake-images', { role, body });
+  expectError(await apply(body, 'observer'), 403, 'FORBIDDEN');
+  expectError(await apply({ ...body, data: { ...body.data, blankId: 'different' } }), 422, 'RETAKE_MISMATCH');
+  expectStatus(await apply(body), 200);
+  expectStatus(await apply(body), 200);
+  const current = expectStatus(await api('POST', '/checks/next', { role: 'checker-2', body: { gameId: s.game.id } }), 200);
+  assert.equal(current.id, id);
+  assert.equal(current.imageVersion, 2);
+  assert.ok(current.imageRef.endsWith('/versions/2'));
+  assert.equal((await getQuota(s)).used, 0);
+});

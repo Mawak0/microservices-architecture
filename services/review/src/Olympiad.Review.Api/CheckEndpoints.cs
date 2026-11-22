@@ -52,7 +52,7 @@ internal static class CheckEndpoints
         {
             var request = await Transport.Body<CorrectionRequest>(c);
             return Transport.Reply(await handler.Execute(await Transport.Identity(c), id,
-                Verdicts.Parse(request.Verdict), Required.Text(request.Reason), c.RequestAborted));
+                Verdicts.Parse(request.Verdict), Required.Text(request.Reason), c.RequestAborted, request.Revision));
         }).WithMetadata(new Roles("admin"));
     }
 }
