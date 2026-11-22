@@ -38,7 +38,8 @@ function resolve(ref) {
 export function validateResponse(method, requestPath, response) {
   const api = getRegistry().docs.get(uri('openapi.json'));
   const pathname = requestPath.split('?')[0];
-  const route = Object.keys(api.paths).find(route => {
+  const candidates = Object.keys(api.paths).sort((a, b) => (a.match(/\{/g)?.length ?? 0) - (b.match(/\{/g)?.length ?? 0));
+  const route = candidates.find(route => {
     const a = route.split('/'), b = pathname.split('/');
     return a.length === b.length && a.every((segment, i) => /^\{.+\}$/.test(segment) || segment === b[i]);
   });

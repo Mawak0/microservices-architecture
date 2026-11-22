@@ -29,7 +29,11 @@ public sealed class S3Objects(IAmazonS3 client, string bucket)
         catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.NotFound)
         {
             try { await client.PutBucketAsync(new PutBucketRequest { BucketName = bucket, UseClientRegion = false }, ct); }
-            catch (AmazonS3Exception conflict) when (conflict.ErrorCode == "BucketAlreadyOwnedByYou") { }
+            catch (AmazonS3Exception conflict) when (conflict.ErrorCode is "BucketAlreadyOwnedByYou" or "BucketAlreadyExists")
+            {
+                // VersityGW can report AlreadyExists for two concurrent initializers of the same bucket.
+                await client.GetBucketLocationAsync(bucket, ct);
+            }
         }
     }
     public static string Digest(ReadOnlySpan<byte> bytes) => Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
