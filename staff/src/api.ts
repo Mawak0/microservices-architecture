@@ -25,7 +25,7 @@ export async function json<T>(response: Response): Promise<T> {
 
 export type Requester = typeof fetch;
 export class StaffApi {
-  constructor(readonly actorId: string, private readonly send: Requester = fetch) {}
+  constructor(readonly actorId: string, private readonly send: Requester = (input, options) => fetch(input, options)) {}
 
   read<T>(service: Service, path: string, signal?: AbortSignal) {
     return this.request(service, path, { signal }).then(json<T>);

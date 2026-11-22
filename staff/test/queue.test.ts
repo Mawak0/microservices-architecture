@@ -81,3 +81,15 @@ it('forwards operation parameters through the authorized same-origin API', async
   expect(message('UNKNOWN')).toMatch(/UNKNOWN/);
   expect(message(null)).toMatch(/подключение/);
 });
+
+it('calls the browser fetch without using the API client as its receiver', async () => {
+  const browserFetch = vi.fn(function (this: unknown) {
+    expect(this).toBeUndefined();
+    return Promise.resolve(response({ count: 1 }));
+  });
+  vi.stubGlobal('fetch', browserFetch);
+  try {
+    const api = new StaffApi('olga');
+    expect(await api.read('review', '/review-queues')).toEqual({ count: 1 });
+  } finally { vi.unstubAllGlobals(); }
+});
