@@ -15,6 +15,7 @@ public sealed class OpenAppeal(ITransactions transactions, CheckQueries checks,
         {
             var current = s.Check(checkId);
             eligibility.Require(game, current, now);
+            if (current.Retake is not null || current.Verdict is null) throw new DomainFailure("CHECK_NOT_REVIEWED");
             if (s.Appeals.Exists(game.Id, current.Receipt.TeamId, current.Receipt.TaskId))
                 throw new DomainFailure("APPEAL_ALREADY_USED");
             var quota = s.Quotas.Get(game.Id); quota.Use();

@@ -51,7 +51,11 @@ public sealed class SavedRequestMiddleware(RequestDelegate next,HttpWorkflowOpti
         if(current.Result is { } result && (current.Status is ProcessStatus.Completed or ProcessStatus.Failed or ProcessStatus.AwaitingCheckpoint or ProcessStatus.Compensating))
         {
             context.Response.StatusCode=first?result.StatusCode:options.ReplayCode(context.Request.Path,result.StatusCode);
-            context.Response.ContentType=result.ContentType; await context.Response.Body.WriteAsync(result.Body,context.RequestAborted);
+            if (result.Body.Length > 0)
+            {
+                context.Response.ContentType = result.ContentType;
+                await context.Response.Body.WriteAsync(result.Body, context.RequestAborted);
+            }
         }
         else { context.Response.StatusCode=202; await context.Response.WriteAsJsonAsync(View(current),context.RequestAborted); }
     }

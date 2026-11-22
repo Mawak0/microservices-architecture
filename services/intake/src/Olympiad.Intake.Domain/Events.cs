@@ -30,3 +30,13 @@ public sealed record UploadAbandoned(string EventId,DateTimeOffset OccurredAt,st
 {
     public override string Type => nameof(UploadAbandoned);
 }
+
+public sealed record RetakeImageData(string RetakeId, string CheckId, string ReceiptId, string BlankId, string GameId, int ImageVersion, int AdmissionVersion);
+
+public sealed record RetakeImageStored(string EventId, DateTimeOffset OccurredAt, string AggregateId, RetakeImageData Data)
+    : IntakeEvent(EventId, OccurredAt, AggregateId)
+{
+    public override string Type => nameof(RetakeImageStored);
+    public string? OperationId { get; init; }
+    public int ProcessVersion { get; init; } = 1;
+}

@@ -13,14 +13,15 @@ public sealed class ResolveAppeal(ITransactions transactions, IClock clock)
             var appeal = s.Appeal(appealId);
             if (appeal.Resolved) throw new DomainFailure("APPEAL_ALREADY_RESOLVED");
             var check = s.Check(appeal.CheckId);
+            var revision = check.Revision;
             check.ResolveAppeal(outcome == "jury-error-corrected", verdict, identity.ActorId, token, now, reason);
             var refund = appeal.Resolve(outcome);
             s.Checks.Save(check); s.Appeals.Save(appeal);
             OutgoingEvents.Appeal(s.Events, appeal, check, "AppealResolved", now);
+            if (check.Revision != revision) OutgoingEvents.Verdict(s.Events, check, "VerdictCorrected", now);
             if (refund)
             {
                 var quota = s.Quotas.Get(appeal.GameId); quota.Return(); s.Quotas.Save(quota);
-                OutgoingEvents.Verdict(s.Events, check, "VerdictCorrected", now);
                 s.Events.Add(new(Guid.NewGuid().ToString(), "AppealUsageReturned", now, appeal.Id,
                     new ReturnedUsageData(appeal.GameId, check.Receipt.AdmissionVersion, appeal.Id)));
             }

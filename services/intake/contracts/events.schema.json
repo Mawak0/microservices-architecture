@@ -10,7 +10,8 @@
     "type": {
       "enum": [
         "ReceiptAccepted",
-        "IntakeClosed"
+        "IntakeClosed",
+        "RetakeImageStored"
       ]
     },
     "data": {
@@ -101,6 +102,40 @@
               "items": {
                 "type": "string"
               }
+            }
+          }
+        }
+      }
+    },
+    {
+      "properties": {
+        "type": {
+          "const": "RetakeImageStored"
+        },
+        "data": {
+          "required": [
+            "retakeId",
+            "checkId",
+            "receiptId",
+            "blankId",
+            "imageVersion"
+          ],
+          "properties": {
+            "retakeId": {
+              "type": "string"
+            },
+            "checkId": {
+              "type": "string"
+            },
+            "receiptId": {
+              "type": "string"
+            },
+            "blankId": {
+              "type": "string"
+            },
+            "imageVersion": {
+              "type": "integer",
+              "minimum": 2
             }
           }
         }

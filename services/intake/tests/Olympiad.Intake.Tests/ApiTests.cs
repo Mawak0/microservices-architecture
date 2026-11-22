@@ -305,6 +305,67 @@ public sealed class ApiTests
         }
     }
 
+    [Fact]
+    public async Task RetakePreservesBothImagesAndWaitsForAcknowledgementAcrossTemporaryOutage()
+    {
+        await using var app = new ApiFixture(workflows: true, production: true);
+        using var client = app.CreateClient();
+        using var opened = await Olympiad.Testing.DurableHttp.Settled(() =>
+            app.Send(client, HttpMethod.Put, "/intake-sessions/game", new { admissionVersion = 1 }, key: "retake-open"));
+        Assert.Equal(HttpStatusCode.OK, opened.StatusCode);
+        using var accepted = await Olympiad.Testing.DurableHttp.Settled(() =>
+            app.Send(client, HttpMethod.Post, "/receipts", app.Blank(), "observer", "retake-seed"));
+        Assert.Contains(accepted.StatusCode, new[] { HttpStatusCode.Created, HttpStatusCode.OK });
+        var receipt = await accepted.Content.ReadFromJsonAsync<JsonElement>();
+        var id = receipt.GetProperty("id").GetString()!;
+        var path = $"/receipts/{id}/retakes";
+        app.Backend.RetakeReceipt = id;
+
+        object Payload(string expected = "registered", string actual = "registered", bool legible = true, string request = "request")
+        {
+            var scanned = JsonSerializer.SerializeToElement(app.Blank(expected, actual, "image/png", legible, pixels: 310));
+            return new { checkId = "check", retakeId = request, qrToken = expected,
+                imageBase64 = scanned.GetProperty("imageBase64").GetString(), imageMediaType = "image/png", legibilityConfirmed = legible };
+        }
+
+        await Error(await app.Send(client, HttpMethod.Post, path, Payload(), "checker"), 403, "FORBIDDEN");
+        await Error(await Olympiad.Testing.DurableHttp.Settled(() =>
+            app.Send(client, HttpMethod.Post, path, Payload(legible: false), "observer", "unclear")), 422, "LEGIBILITY_NOT_CONFIRMED");
+        await Error(await Olympiad.Testing.DurableHttp.Settled(() =>
+            app.Send(client, HttpMethod.Post, path, Payload(actual: "different"), "observer", "wrong-qr")), 422, "QR_MISMATCH");
+        await Error(await Olympiad.Testing.DurableHttp.Settled(() =>
+            app.Send(client, HttpMethod.Post, path, Payload(request: "wrong"), "observer", "wrong-ticket")), 404, "NOT_FOUND");
+        app.Backend.Deadline = DateTimeOffset.UtcNow.AddMinutes(-1);
+        await Error(await Olympiad.Testing.DurableHttp.Settled(() =>
+            app.Send(client, HttpMethod.Post, path, Payload(), "observer", "not-approved")), 409, "RETAKE_APPROVAL_REQUIRED");
+
+        app.Backend.RetakeApproved = true;
+        app.Backend.RetakeDeliveryAvailable = false;
+        var upload = Payload();
+        using var submitted = await Olympiad.Testing.DurableHttp.Settled(() =>
+            app.Send(client, HttpMethod.Post, path, upload, "observer", "same-retake"));
+        Assert.Equal(HttpStatusCode.OK, submitted.StatusCode);
+        Assert.Equal("AwaitingCheckpoint", submitted.Headers.GetValues("Operation-Status").Single());
+        var result = await submitted.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(2, result.GetProperty("imageVersion").GetInt32());
+        Assert.Equal(receipt.GetProperty("acceptedAt").GetString(), result.GetProperty("acceptedAt").GetString());
+        var attempted = await app.Backend.FirstRetakeDelivery.Task.WaitAsync(TimeSpan.FromSeconds(12));
+        app.Backend.RetakeDeliveryAvailable = true;
+        var delivered = await app.Backend.ConfirmedRetakeDelivery.Task.WaitAsync(TimeSpan.FromSeconds(15));
+        Assert.Equal(attempted, delivered);
+
+        using var replay = await app.Send(client, HttpMethod.Post, path, upload, "observer", "same-retake");
+        Assert.Equal(result.ToString(), (await replay.Content.ReadFromJsonAsync<JsonElement>()).ToString());
+        await Error(await Olympiad.Testing.DurableHttp.Settled(() =>
+            app.Send(client, HttpMethod.Post, path, upload, "observer", "duplicate-competitor")), 409, "RETAKE_CONFLICT");
+        using var initial = await app.Send(client, HttpMethod.Get, $"/receipts/{id}/image/versions/1", token: "checker");
+        using var replacement = await app.Send(client, HttpMethod.Get, $"/receipts/{id}/image/versions/2", token: "checker");
+        Assert.Equal(HttpStatusCode.OK, initial.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, replacement.StatusCode);
+        Assert.NotEqual(await initial.Content.ReadAsByteArrayAsync(), await replacement.Content.ReadAsByteArrayAsync());
+        await Error(await app.Send(client, HttpMethod.Get, $"/receipts/{id}/image/versions/3", token: "checker"), 404, "NOT_FOUND");
+    }
+
     private static async Task Error(HttpResponseMessage response, int status, string code)
     {
         using (response) { Assert.Equal(status, (int)response.StatusCode); Assert.Equal(code, (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString()); }
@@ -346,9 +407,9 @@ public sealed class ApiTests
             });
         }
         public HttpClient CreateClient() => factory.CreateClient();
-        public object Blank(string token = "registered", string photographedToken = "registered", string mediaType = "image/png", bool legible = true)
+        public object Blank(string token = "registered", string photographedToken = "registered", string mediaType = "image/png", bool legible = true, int pixels = 240)
         {
-            var matrix = new QRCodeWriter().encode(photographedToken, BarcodeFormat.QR_CODE, 240, 240);
+            var matrix = new QRCodeWriter().encode(photographedToken, BarcodeFormat.QR_CODE, pixels, pixels);
             using var bitmap = new SKBitmap(matrix.Width, matrix.Height);
             for (var y = 0; y < matrix.Height; y++) for (var x = 0; x < matrix.Width; x++) bitmap.SetPixel(x, y, matrix[x,y] ? SKColors.Black : SKColors.White);
             using var image = bitmap.Encode(SKEncodedImageFormat.Png, 100);
@@ -384,12 +445,35 @@ public sealed class ApiTests
         public bool Late { get; set; }
         public bool EventsAvailable { get; set; } = true;
         public bool BlockEvents { get; set; }
+        public string? RetakeReceipt { get; set; }
+        public bool RetakeApproved { get; set; }
+        public bool RetakeDeliveryAvailable { get; set; } = true;
+        public TaskCompletionSource<string> FirstRetakeDelivery { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource<string> ConfirmedRetakeDelivery { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
         public TaskCompletionSource<JsonElement> FirstEvent { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public TaskCompletionSource<JsonElement> DeliveredEvent { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
             var path = request.RequestUri!.AbsolutePath;
             var body = request.Content is null ? default : await request.Content.ReadFromJsonAsync<JsonElement>(ct);
+            if (path.StartsWith("/integrations/retakes/", StringComparison.Ordinal))
+                return path.EndsWith("/request", StringComparison.Ordinal)
+                    ? new(HttpStatusCode.OK) { Content = JsonContent.Create(new { id = "request", checkId = "check",
+                        receiptId = RetakeReceipt, blankId = "blank", gameId = "game", imageVersion = 1, requiresApproval = false,
+                        approved = RetakeApproved }) }
+                    : new(HttpStatusCode.NotFound);
+            if (path == "/integrations/retake-images")
+            {
+                var available = RetakeDeliveryAvailable;
+                var eventId = body.GetProperty("eventId").GetString()!;
+                FirstRetakeDelivery.TrySetResult(eventId);
+                if (!available) return new(HttpStatusCode.ServiceUnavailable);
+                ConfirmedRetakeDelivery.TrySetResult(eventId);
+                var data = body.GetProperty("data");
+                return new(HttpStatusCode.OK) { Content = JsonContent.Create(new { id = data.GetProperty("retakeId").GetString(),
+                    receiptId = data.GetProperty("receiptId").GetString(), imageVersion = data.GetProperty("imageVersion").GetInt32() }) };
+            }
             if(path=="/integrations/receipts")
             {
                 var data=body.GetProperty("data");

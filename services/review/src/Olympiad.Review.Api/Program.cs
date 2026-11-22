@@ -51,6 +51,9 @@ builder.Services.AddSingleton<ReceiveReceipt>();
 builder.Services.AddSingleton<CheckAssignments>();
 builder.Services.AddSingleton<RecordVerdict>();
 builder.Services.AddSingleton<CorrectVerdict>();
+builder.Services.AddSingleton<SelfCorrectVerdict>();
+builder.Services.AddSingleton<RetakeActions>();
+builder.Services.AddSingleton<IRetakeWorklist, RetakeWorklist>();
 builder.Services.AddSingleton<QuotaCommands>();
 builder.Services.AddSingleton<OpenAppeal>();
 builder.Services.AddSingleton<AppealAssignments>();
@@ -68,7 +71,7 @@ app.UsePrivateResponses();
 app.UseMiddleware<RequestMiddleware>();
 if(app.Services.GetService<IProcessStore>() is not null) await app.UseWorkflowsAsync();
 app.MapGet("/health", () => Results.Json(new { service = "review", healthy = true }));
-WorklistEndpoints.Map(app); CheckEndpoints.Map(app); AppealEndpoints.Map(app); CompletionEndpoints.Map(app);
+RetakeEndpoints.Map(app); WorklistEndpoints.Map(app); CheckEndpoints.Map(app); AppealEndpoints.Map(app); CompletionEndpoints.Map(app);
 app.Run();
 
 // Allows integration tests to exercise the real composition in the test process.

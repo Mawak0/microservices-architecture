@@ -41,3 +41,33 @@ console.log('ALL PASSED '+results.length);
 
 
 
+
+const retakeGame = await ok('/demo/game', 'POST', { name: 'Пересъёмка', system: 'bonuses' });
+const paper = (await api('materials', '/blanks', 'POST', {
+  gameId: retakeGame.id, teamId: retakeGame.teamId, taskId: retakeGame.tasks[0].id, count: 1
+})).blanks[0];
+const original = (await QRCode.toDataURL(paper.qrToken, { scale: 5 })).split(',')[1];
+const accepted = await api('intake', '/receipts', 'POST', {
+  qrToken: paper.qrToken, imageBase64: original, imageMediaType: 'image/png', legibilityConfirmed: true
+}, 'observer');
+const nextRetakeWork = async () => {
+  const work = await api('review', '/checks/next', 'POST', { gameId: retakeGame.id }, 'checker');
+  return work?.id ? work : null;
+};
+const firstWork = await until(nextRetakeWork);
+const ticket = await api('review', '/checks/' + firstWork.id + '/retakes', 'POST', { revision: 0 },
+  'checker', firstWork.lease.token);
+assert.equal(ticket.receiptId, accepted.id);
+const replacement = (await QRCode.toDataURL(paper.qrToken, { scale: 8 })).split(',')[1];
+const changedPhoto = await api('intake', '/receipts/' + accepted.id + '/retakes', 'POST', {
+  checkId: firstWork.id, retakeId: ticket.id, qrToken: paper.qrToken, imageBase64: replacement,
+  imageMediaType: 'image/png', legibilityConfirmed: true
+}, 'observer');
+assert.equal(changedPhoto.receiptId, accepted.id);
+assert.equal(changedPhoto.acceptedAt, accepted.acceptedAt);
+const newWork = await until(nextRetakeWork);
+assert.equal(newWork.id, firstWork.id);
+assert.equal(newWork.imageVersion, 2);
+assert.deepEqual(await api('intake', newWork.imageRef, 'GET', undefined, 'checker'), Buffer.from(replacement, 'base64'));
+assert.deepEqual(await api('intake', firstWork.imageRef, 'GET', undefined, 'checker'), Buffer.from(original, 'base64'));
+pass('Пересъёмка сохранила исходный ответ и вернула на проверку новую версию снимка');

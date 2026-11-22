@@ -53,6 +53,7 @@ internal sealed record CorrectionRequest
 {
     public required string Verdict { get; init; }
     public required string Reason { get; init; }
+    public int? Revision { get; init; }
 }
 internal sealed record AppealRequest
 {

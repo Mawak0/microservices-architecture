@@ -33,7 +33,7 @@ public sealed class GameReviewCompletion
     {
         Synchronize(game.AdmissionVersion);
         var missing = state.ReceiptIds?.Except(checks.Select(c => c.Receipt.Id)).ToArray() ?? [];
-        var pending = checks.Where(c => c.OriginalVerdict is null).Select(c => c.Id).ToArray();
+        var pending = checks.Where(c => c.Verdict is null || c.Retake is not null).Select(c => c.Id).ToArray();
         var pendingAppeals = appeals.Where(a => !a.Resolved).Select(a => a.Id).ToArray();
         var accepting = game.AcceptingSubmissions(now);
         var complete = state.AdmissionVersion == game.AdmissionVersion && state.ReceiptIds is not null && !accepting && missing.Length == 0 &&

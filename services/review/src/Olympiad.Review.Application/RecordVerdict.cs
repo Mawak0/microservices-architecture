@@ -19,14 +19,17 @@ public sealed class RecordVerdict(ITransactions transactions, IClock clock)
 public sealed class CorrectVerdict(ITransactions transactions, IClock clock)
 {
     public async Task<Outcome<CheckView>> Execute(CommandIdentity identity, string id,
-        Verdict verdict, string reason, CancellationToken cancellationToken)
+        Verdict verdict, string reason, CancellationToken cancellationToken, int? expectedRevision = null)
     {
         var replay = await transactions.Replay<CheckView>(identity, cancellationToken);
         if (replay is not null) return replay;
         var now = await clock.Now(cancellationToken);
         return await transactions.Run(identity, s =>
         {
-            var check = s.Check(id); check.Correct(verdict, identity.ActorId, now, reason);
+            var check = s.Check(id);
+            RetakeActions.RequireMutable(s, check.Receipt.GameId);
+            if (expectedRevision is { } revision) check.RequireRevision(revision);
+            check.Correct(verdict, identity.ActorId, now, reason);
             s.Checks.Save(check); OutgoingEvents.Verdict(s.Events, check, "VerdictCorrected", now);
             return new Outcome<CheckView>(CheckView.From(check));
         }, cancellationToken);
