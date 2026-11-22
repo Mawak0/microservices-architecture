@@ -62,3 +62,17 @@ jobs:
         run: node tools/review-ci.mjs ${{ matrix.service }}
       - if: matrix.service == 'layout'
         run: node --check tools/review-ci.mjs
+
+  staff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        if: hashFiles('staff/package-lock.json') != ''
+        with:
+          node-version: '22'
+      - if: hashFiles('staff/package-lock.json') != ''
+        run: |
+          npm ci --prefix staff
+          npm run build --prefix staff
+          npm test --prefix staff
