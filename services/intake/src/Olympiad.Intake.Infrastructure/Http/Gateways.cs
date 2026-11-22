@@ -33,9 +33,9 @@ public sealed class HttpBlankRegistry(HttpClient client) : IBlankRegistry
     public async Task<BlankBinding> VerifyAsync(string qrToken, CancellationToken ct)
     {
         var blank = await http.PostAsync<BlankDocument>("blank-verifications", new { qrToken }, ct, IntakeError.InvalidQr, Guid.NewGuid().ToString());
-        return new(blank.Id, blank.GameId, blank.TeamId, blank.TaskId, blank.TaskNumber);
+        return new(blank.Id, blank.GameId, blank.TeamId, blank.TaskId, blank.TaskNumber, blank.Modifier);
     }
-    private sealed record BlankDocument(string Id, string GameId, string TeamId, string TaskId, string TaskNumber);
+    private sealed record BlankDocument(string Id, string GameId, string TeamId, string TaskId, string TaskNumber, BlankModifier? Modifier);
 }
 
 public sealed class HttpIdentityProvider(HttpClient client) : IIdentityProvider

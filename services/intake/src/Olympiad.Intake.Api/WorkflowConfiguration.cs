@@ -15,6 +15,7 @@ internal static class WorkflowConfiguration
         {
             CaptureActor=c=> { var actor=(Actor)c.Items[typeof(Actor)]!; return ActorSnapshots.Capture(actor.UserId,actor.Roles); },
             RestoreActor=(c,json)=> { var saved=ActorSnapshots.Read(json); c.Items[typeof(Actor)]=new Actor(saved.Id,saved.Roles.ToHashSet(StringComparer.Ordinal)); },
+            Track=(method,path)=>path!="/receipts/preview" && method is "POST" or "PUT" or "PATCH" or "DELETE",
             Checkpoint=path=>path=="/receipts"?"ReviewRegistered":null,
             ReplayCode=(path,code)=>path=="/receipts"&&code==201?200:code,
             ProtectStatusEndpoint=route=>route.WithMetadata(new RequiredRoles("observer","checker","organizer","integration")),

@@ -17,6 +17,177 @@
     }
   ],
   "paths": {
+    "/checks/activity": {
+      "get": {
+        "operationId": "reviewerActivity",
+        "x-roles": [
+          "checker",
+          "admin"
+        ],
+        "parameters": [
+          {
+            "name": "gameId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100000
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Актуальное состояние"
+          },
+          "401": {
+            "description": "Требуется вход"
+          },
+          "403": {
+            "description": "Недостаточно прав"
+          },
+          "422": {
+            "description": "Некорректные параметры"
+          }
+        }
+      }
+    },
+    "/checks/search": {
+      "get": {
+        "operationId": "searchChecks",
+        "x-roles": [
+          "checker",
+          "observer",
+          "admin"
+        ],
+        "parameters": [
+          {
+            "name": "gameId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "teamId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "taskId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "receiptId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "blankId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100000
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Актуальное состояние",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Требуется вход"
+          },
+          "403": {
+            "description": "Недостаточно прав"
+          },
+          "422": {
+            "description": "Некорректные параметры"
+          },
+          "304": {
+            "description": "Представление не изменилось"
+          }
+        }
+      }
+    },
     "/integrations/receipts": {
       "post": {
         "operationId": "receiveAcceptedReceipt",
@@ -1502,6 +1673,40 @@
           },
           "404": {
             "description": "Операция отсутствует или принадлежит другому пользователю"
+          }
+        }
+      }
+    },
+    "/review-queues": {
+      "get": {
+        "operationId": "reviewQueueCounts",
+        "x-roles": [
+          "checker",
+          "admin"
+        ],
+        "parameters": [
+          {
+            "name": "gameId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Актуальное состояние"
+          },
+          "401": {
+            "description": "Требуется вход"
+          },
+          "403": {
+            "description": "Недостаточно прав"
+          },
+          "422": {
+            "description": "Некорректные параметры"
           }
         }
       }

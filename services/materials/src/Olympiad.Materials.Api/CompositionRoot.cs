@@ -23,6 +23,7 @@ internal static class CompositionRoot
         GlobalFontSettings.FontResolver ??= new UnicodeFontResolver(config["Pdf:FontPath"]);
         builder.Services.AddSingleton(database);
         builder.Services.AddSingleton<IMaterialsTransactions, PostgresMaterialsTransactions>();
+        builder.Services.AddSingleton<IMaterialWorklistReader, MaterialWorklistReader>();
         builder.Services.AddSingleton<IBlankTokenProtector>(new HmacBlankTokenProtector(key));
         builder.Services.AddSingleton<IPdfRenderer, PdfSharpMaterialRenderer>();
         string S3Setting(string key) => config["S3:" + key] ?? throw new InvalidOperationException("Configure S3:" + key);

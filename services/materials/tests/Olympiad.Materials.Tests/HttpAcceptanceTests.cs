@@ -195,6 +195,9 @@ public sealed class HttpAcceptanceTests
                 using var response = await client.SendAsync(request);
                 var bytes = await response.Content.ReadAsByteArrayAsync();
                 context.Response.StatusCode = (int)response.StatusCode;
+                foreach (var name in new[] { "Cache-Control", "ETag", "Vary" })
+                    if (response.Headers.TryGetValues(name, out var values))
+                        context.Response.Headers[name] = string.Join(", ", values);
                 context.Response.ContentType = response.Content.Headers.ContentType?.ToString();
                 context.Response.ContentLength64 = bytes.Length;
                 await context.Response.OutputStream.WriteAsync(bytes);

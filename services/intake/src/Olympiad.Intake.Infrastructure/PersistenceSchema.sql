@@ -14,3 +14,5 @@ result_json TEXT NOT NULL, PRIMARY KEY(scope,operation_key));
 CREATE TABLE IF NOT EXISTS outbox(event_id TEXT PRIMARY KEY, event_json TEXT NOT NULL, available_at TEXT NOT NULL,
 lease_until TEXT, worker_token TEXT, delivered INTEGER NOT NULL DEFAULT 0);
 CREATE INDEX IF NOT EXISTS outbox_ready ON outbox(delivered,available_at,lease_until);
+CREATE INDEX IF NOT EXISTS receipts_game_search ON receipts(game_id,accepted_at DESC,id);
+CREATE INDEX IF NOT EXISTS receipts_team_task_search ON receipts(game_id,team_id,task_id);

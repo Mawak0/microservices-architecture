@@ -1,3 +1,4 @@
+using Olympiad.Http;
 using Olympiad.Review.Api;
 using Olympiad.Review.Application;
 using Olympiad.Review.Domain;
@@ -45,6 +46,7 @@ if (leaseSeconds <= 0) throw new InvalidOperationException("Runtime:LeaseSeconds
 builder.Services.AddSingleton(new LeaseSettings(TimeSpan.FromSeconds(leaseSeconds)));
 builder.Services.AddSingleton<AppealEligibility>();
 builder.Services.AddSingleton<CheckQueries>();
+builder.Services.AddSingleton<IReviewWorklistReader, ReviewWorklistReader>();
 builder.Services.AddSingleton<ReceiveReceipt>();
 builder.Services.AddSingleton<CheckAssignments>();
 builder.Services.AddSingleton<RecordVerdict>();
@@ -62,10 +64,11 @@ builder.Services.AddHostedService<BackgroundPublication>();
 builder.AddReviewWorkflows();
 var app = builder.Build();
 app.UseRouting();
+app.UsePrivateResponses();
 app.UseMiddleware<RequestMiddleware>();
 if(app.Services.GetService<IProcessStore>() is not null) await app.UseWorkflowsAsync();
 app.MapGet("/health", () => Results.Json(new { service = "review", healthy = true }));
-CheckEndpoints.Map(app); AppealEndpoints.Map(app); CompletionEndpoints.Map(app);
+WorklistEndpoints.Map(app); CheckEndpoints.Map(app); AppealEndpoints.Map(app); CompletionEndpoints.Map(app);
 app.Run();
 
 // Allows integration tests to exercise the real composition in the test process.

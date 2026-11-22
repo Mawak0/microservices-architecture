@@ -2,7 +2,7 @@ using Olympiad.Intake.Domain;
 
 namespace Olympiad.Intake.Application;
 
-public sealed record SubmitBlank(string QrToken, ReadOnlyMemory<byte> Image, string ImageMediaType, bool LegibilityConfirmed);
+public sealed record SubmitBlank(string QrToken, ReadOnlyMemory<byte> Image, string ImageMediaType, bool LegibilityConfirmed, string? GameId = null);
 public sealed record AcceptedBlank(Receipt Receipt, bool Replayed);
 public sealed record ImageLimits(int MaximumBytes = 15 * 1024 * 1024);
 
@@ -26,6 +26,7 @@ public sealed class AcceptBlank(IIntakeUnitOfWork store, IBlankRegistry registry
         if (!string.Equals(scanned, command.QrToken, StringComparison.Ordinal))
             throw new IntakeException(IntakeError.QrMismatch, "The image QR does not match the submitted token.");
         var blank = await registry.VerifyAsync(scanned, ct); blank.RequireValid();
+        PreviewBlank.RequireSameGame(command.GameId, blank);
         var admission = await games.GetAsync(blank.GameId, ct);
         (await teams.GetAsync(blank.TeamId, ct)).RequireEligible(blank);
         var now = await clock.NowAsync(ct);

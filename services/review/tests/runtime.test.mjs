@@ -1,7 +1,8 @@
-import { test, before } from 'node:test';
+import { test, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { api, scenario, key, expectStatus, expectError, events, eventually, fixture, clockNow, advanceClock, requireService } from '../test-support/client.mjs';
 before(requireService);
+beforeEach(() => advanceClock(301_000));
 
 async function assignedWork(kind) {
   const s = await scenario();
@@ -102,4 +103,32 @@ test('Automatic completion observes appeal deadline transition without completio
   expectStatus(await fixture('PATCH', '/__test/scenarios/' + s.game.id, { appealOpen: false }), 200);
   const completed = await eventually(() => events(s.game.id, 'AllChecksCompleted'), e => e.length === 1);
   assert.deepEqual(completed[0].data.receiptIds, []);
+});
+
+test('Queue counts, indexed claims, private search and recovery of assignments', async () => {
+  await advanceClock(61_000);
+  const s = await scenario();
+  const game = s.game.id;
+  for (const { id, ...data } of s.receipts) {
+    expectStatus(await api('POST', '/integrations/receipts', { role: 'system', body: {
+      eventId: key(), type: 'ReceiptAccepted', aggregateId: id, occurredAt: await clockNow(), data: { receiptId: id, ...data }
+    } }), 201);
+  }
+  const queue = await api('GET', '/review-queues?gameId=' + game, { role: 'checker' });
+  assert.deepEqual(expectStatus(queue, 200), { answers: s.receipts.length, appeals: 0 });
+  assert.equal(queue.headers.get('cache-control'), 'no-store');
+  const claims = await Promise.all(['checker', 'checker-2'].map(role => api('POST', '/checks/next', { role, body: { gameId: game } })));
+  for (const response of claims) assert.equal(response.status, 200);
+  assert.notEqual(claims[0].data.id, claims[1].data.id);
+  const mine = expectStatus(await api('GET', '/checks/activity?gameId=' + game, { role: 'checker' }), 200);
+  assert.deepEqual(mine.assignments.map(item => item.id), [claims[0].data.id]);
+  const url = '/checks/search?gameId=' + game + '&limit=1';
+  const first = await api('GET', url, { role: 'observer' });
+  assert.equal(first.status, 200);
+  assert.equal(first.data.nextOffset, 1);
+  assert.equal(first.data.items[0].referenceAnswer, undefined);
+  assert.equal((await api('GET', url, { role: 'observer', ifNoneMatch: first.headers.get('etag') })).status, 304);
+  assert.equal((await api('GET', url, { role: 'organizer', ifNoneMatch: first.headers.get('etag') })).status, 403);
+  await expireLease(claims[0].data.lease);
+  assert.equal(expectStatus(await api('GET', '/review-queues?gameId=' + game, { role: 'checker' }), 200).answers, s.receipts.length);
 });

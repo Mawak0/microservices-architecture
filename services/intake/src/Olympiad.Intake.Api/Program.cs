@@ -1,3 +1,4 @@
+using Olympiad.Http;
 using Olympiad.Intake.Api;
 using Olympiad.Intake.Infrastructure.Persistence;
 using Olympiad.Workflows.Infrastructure;
@@ -10,6 +11,7 @@ var app = builder.Build();
 await app.Services.GetRequiredService<PostgresDatabase>().InitializeAsync();
 if (app.Services.GetService<Olympiad.Storage.S3.S3Objects>() is { } objects) await objects.InitializeAsync(default);
 app.UseRouting();
+app.UsePrivateResponses();
 app.UseMiddleware<ErrorMiddleware>();
 app.UseMiddleware<AuthorizationMiddleware>();
 if(app.Services.GetService<IProcessStore>() is not null) await app.UseWorkflowsAsync();
