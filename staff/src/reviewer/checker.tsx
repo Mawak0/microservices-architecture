@@ -7,6 +7,7 @@ import { Photo } from './photo';
 import { nextWork, opposite, renewOrRelease, validLease, verdictText, withPhoto, type Activity, type Lane, type Verdict, type Work } from './work';
 
 interface Counts { answers: number; appeals: number }
+interface PendingTransition { key: string; completedWork: string; lane: Lane }
 
 export function Checker({ api, game, queue, online, jobs }: Workstation) {
   const [work, show] = useState<Work>();
@@ -18,6 +19,7 @@ export function Checker({ api, game, queue, online, jobs }: Workstation) {
   const [status, setStatus] = useState('');
   const [error, fail] = useState('');
   const [recentOffset, setRecentOffset] = useState(0);
+  const [transition, continueAfter] = useState<PendingTransition>();
   const action = useRef(false);
   const mounted = useRef(true);
   const next = useRef<Promise<Work | undefined> | undefined>(undefined);
@@ -58,10 +60,10 @@ export function Checker({ api, game, queue, online, jobs }: Workstation) {
     finally { action.current = false; if (mounted.current) setBusy(false); }
   }
 
-  async function pick() {
+  async function pick(exclude?: string) {
     const own = lane === 'checks' ? activity.data?.assignments.find(check =>
-      check.lease && check.status === 'checking' && Date.parse(check.lease.expiresAt) > Date.now()) : undefined;
-    const item = own ? await withPhoto(api, { id: own.id, lane, check: own }) : await nextWork(api, game.id, lane);
+      check.id !== exclude && check.lease && check.status === 'checking' && Date.parse(check.lease.expiresAt) > Date.now()) : undefined;
+    const item = own ? await withPhoto(api, { id: own.id, lane, check: own }) : await nextWork(api, game.id, lane, exclude);
     if (mounted.current) {
       show(item);
       setStatus(item ? '' : 'Доступных заданий пока нет.');
@@ -70,11 +72,32 @@ export function Checker({ api, game, queue, online, jobs }: Workstation) {
   }
 
   async function stage(label: string, command: Command) {
-    await queue.enqueue(game.id, label, command);
+    const job = await queue.enqueue(game.id, label, command);
     if (online) void queue.flush().catch(problem => fail(message(problem)));
     counts.reload();
     activity.reload();
+    return job;
   }
+
+  const result = transition && jobs.find(job => job.key === transition.key);
+  useEffect(() => {
+    if (!transition || busy || !result) return;
+    if (result.state === 'conflict') {
+      continueAfter(undefined);
+      setStatus('');
+      fail(message(result.error));
+    } else if (result.state === 'done' && online) {
+      continueAfter(undefined);
+      void run(async () => {
+        const item = await nextWork(api, game.id, transition.lane, transition.completedWork);
+        if (mounted.current) {
+          show(item);
+          setStatus(item ? 'Действие записано сервером.' : 'Действие записано. Доступных заданий пока нет.');
+          counts.reload();
+        }
+      });
+    }
+  }, [api, busy, counts.reload, game.id, online, result, transition]);
 
   function finish(verdict: Verdict | 'retake' | 'upheld' | 'corrected') {
     if (!work || paused || !validLease(work) || action.current) return;
@@ -90,15 +113,17 @@ export function Checker({ api, game, queue, online, jobs }: Workstation) {
         body: { outcome: verdict === 'upheld' ? 'upheld' : 'jury-error-corrected', reason: reason.trim(),
           ...(verdict === 'upheld' ? {} : { verdict: opposite(work.check.verdict ?? work.check.originalVerdict) }) } };
       else command = { service: 'review', path: '/checks/' + work.id + '/verdict', token, body: { verdict } };
-      await stage((verdict === 'retake' ? 'Пересъёмка' : work.lane === 'appeals' ? 'Решение апелляции' : 'Вердикт') +
+      const job = await stage((verdict === 'retake' ? 'Пересъёмка' : work.lane === 'appeals' ? 'Решение апелляции' : 'Вердикт') +
         ' · задача ' + work.check.taskNumber, command);
       const reserved = next.current;
       next.current = undefined;
-      let prepared = await reserved;
-      if (online && (!prepared || !validLease(prepared)))
-        prepared = await nextWork(api, game.id, work.lane, work.id).catch(() => undefined);
+      const prepared = await reserved;
       if (mounted.current) {
-        show(prepared && validLease(prepared) ? prepared : undefined);
+        if (prepared && validLease(prepared)) show(prepared);
+        else {
+          show(undefined);
+          continueAfter({ key: job.key, completedWork: work.id, lane: work.lane });
+        }
         setStatus('Действие сохранено в очереди отправки.');
         setReason('');
         setDisagreement(false);
@@ -121,6 +146,7 @@ export function Checker({ api, game, queue, online, jobs }: Workstation) {
 
   function changeLane(value: Lane) {
     if (work || busy) return;
+    continueAfter(undefined);
     setLane(value);
     setStatus('');
     setReason('');
@@ -136,7 +162,10 @@ export function Checker({ api, game, queue, online, jobs }: Workstation) {
     </div>
     {error && <p role="alert">{error}</p>}
     {status && <p role="status">{status}</p>}
-    {!work ? <section className="panel"><button disabled={!online || busy} onClick={() => void run(pick)}>Взять следующую карточку</button></section> :
+    {!work ? <section className="panel"><button disabled={!online || busy} onClick={() => void run(async () => {
+      continueAfter(undefined);
+      await pick(transition?.completedWork);
+    })}>Взять следующую карточку</button></section> :
       <div className="columns">
         <section className="panel"><Photo key={work.check.imageVersion} blob={work.photo} title={'Бланк задачи ' + work.check.taskNumber}/>
           {!work.photo && <button className="quiet" disabled={!online || busy} onClick={() => void run(async () => show(await withPhoto(api, work)))}>Повторить загрузку</button>}

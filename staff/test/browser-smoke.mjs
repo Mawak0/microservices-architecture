@@ -34,7 +34,7 @@ async function waitFor(description, read) {
 }
 
 const game = await api(demo + '/demo/game', { body: { name: 'Браузерный сценарий', system: 'bonuses' } });
-async function issuePhoto(task) {
+async function issuePhoto(game, task) {
   const { blanks: [blank] } = await api(demo + '/api/materials/blanks', {
     body: { gameId: game.id, teamId: game.teamId, taskId: task.id, count: 1 },
   });
@@ -42,7 +42,14 @@ async function issuePhoto(task) {
   return { blank, base64: image.split(',')[1] };
 }
 
-const [first, second] = await Promise.all(game.tasks.slice(0, 2).map(issuePhoto));
+function submitPhoto(game, photo) {
+  return api(demo + '/api/intake/receipts', { role: 'observer', body: {
+    gameId: game.id, qrToken: photo.blank.qrToken, imageBase64: photo.base64,
+    imageMediaType: 'image/png', legibilityConfirmed: true,
+  } });
+}
+
+const [first, second] = await Promise.all(game.tasks.slice(0, 2).map(task => issuePhoto(game, task)));
 const contextUrl = demo + '/staff-test-context';
 const directory = { tournaments: [{ id: game.tournamentId, name: 'Олимпиада', games: [{
   id: game.id, name: game.name, tasks: game.tasks, teams: [{ id: game.teamId, name: game.teamName }],
@@ -132,13 +139,16 @@ try {
   assert.deepEqual(receipts.items.map(receipt => receipt.blankId), [first.blank.id]);
   console.log('PASS Браузер восстановил принятую отправку после потери ответа и перезагрузки в двух вкладках');
 
-  await api(demo + '/api/intake/receipts', { role: 'observer', body: {
-    gameId: game.id, qrToken: second.blank.qrToken, imageBase64: second.base64,
-    imageMediaType: 'image/png', legibilityConfirmed: true,
-  } });
+  await submitPhoto(game, second);
   const checks = () => api(demo + '/api/review/checks?gameId=' + game.id).then(page => page.items);
   await waitFor('Both answers did not reach the review queue', async () => (await checks()).length === 2);
-  const checker = await workspace('checker');
+  const otherGame = await api(demo + '/demo/game', { body: { name: 'Активное назначение', system: 'bonuses' } });
+  await submitPhoto(otherGame, await issuePhoto(otherGame, otherGame.tasks[0]));
+  await waitFor('The other game did not receive its answer', async () =>
+    (await api(demo + '/api/review/checks?gameId=' + otherGame.id)).items.length === 1);
+  const held = await api(demo + '/api/review/checks/next', { role: 'checker-2', body: { gameId: otherGame.id } });
+  assert.ok(held?.id);
+  const checker = await workspace('checker-2');
   const review = await checker.newPage();
   const replies = [];
   review.on('response', response => {
@@ -154,6 +164,8 @@ try {
     throw new Error(`The card photo is missing: ${await review.locator('body').innerText()}\n${JSON.stringify(replies)}`, { cause: error });
   }
   const current = await review.getByRole('heading', { name: /^Задача / }).innerText();
+  await waitFor('The prefetch did not encounter the assignment limit', () =>
+    replies.some(([path, status]) => path === '/api/review/checks/next' && status === 204));
   await review.keyboard.down('1');
   await review.getByRole('heading', { name: current, exact: true }).waitFor({ state: 'hidden' });
   try {
@@ -171,7 +183,7 @@ try {
   await review.getByRole('button', { name: 'Вернуть задание' }).click();
   await review.getByRole('button', { name: 'Взять следующую карточку' }).waitFor();
   assert.equal((await checks()).filter(item => item.verdict).length, 1);
-  console.log('PASS Браузер записал один вердикт, открыл следующую карточку и проигнорировал удержание клавиши');
+  console.log('PASS Браузер записал один вердикт и открыл следующую карточку после освобождения назначения');
 } finally {
   await browser?.close();
   await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));

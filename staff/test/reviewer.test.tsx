@@ -4,6 +4,7 @@ import { ApiError } from '../src/api';
 import type { Workstation } from '../src/app';
 import { Administration } from '../src/reviewer/admin';
 import { Checker } from '../src/reviewer/checker';
+import type { Job } from '../src/queue';
 import { nextWork, renewOrRelease, validLease, withPhoto, type Check, type Work } from '../src/reviewer/work';
 import type { StaffApi } from '../src/api';
 
@@ -38,7 +39,8 @@ function context(online = true) {
     }),
     artifact: vi.fn(async () => photo),
   };
-  const queue = { enqueue: vi.fn(async () => ({})), flush: vi.fn(async () => {}) };
+  const queue = { enqueue: vi.fn(async (gameId, label, command) => ({ ...command, gameId, label,
+    key: 'job', actorId: 'alice', state: 'queued', createdAt: 0 } as Job)), flush: vi.fn(async () => {}) };
   const props = { actor: { id: 'alice', roles: ['admin'] }, game: { id: 'g', name: 'Бонусы',
     teams: [{ id: 't', name: 'Вектор' }], tasks: [{ id: 'task', number: '3' }] },
     api, queue, online, jobs: [], setDirty: vi.fn() } as unknown as Workstation;
@@ -89,6 +91,22 @@ it('honors the old verdict in an appeal, requires confirmation, and uses the exa
   fireEvent.click(screen.getByText('Сохранить решение'));
   expect(queue.enqueue.mock.calls[0][2]).toMatchObject({ path: '/appeals/appeal-1/resolve', token: 'token-3',
     body: { outcome: 'jury-error-corrected', verdict: 'correct', reason: 'Видно на снимке' } });
+});
+
+it('opens the next answer after confirmation when no second assignment could be prepared', async () => {
+  const { props, api, queue } = context();
+  api.command.mockResolvedValueOnce(check(1)).mockResolvedValueOnce(undefined).mockResolvedValueOnce(check(2));
+  const { rerender } = render(<Checker {...props}/>);
+  fireEvent.click(await screen.findByText('Взять следующую карточку'));
+  await screen.findByAltText('Бланк задачи 1');
+  await waitFor(() => expect(api.command).toHaveBeenCalledTimes(2));
+  fireEvent.keyDown(window, { key: '1' });
+  await screen.findByText('Действие сохранено в очереди отправки.');
+  expect(api.command).toHaveBeenCalledTimes(2);
+  const queued = await queue.enqueue.mock.results[0].value;
+  rerender(<Checker {...props} jobs={[{ ...queued, state: 'done' }]}/>);
+  await screen.findByAltText('Бланк задачи 2');
+  expect(api.command).toHaveBeenNthCalledWith(3, expect.objectContaining({ path: '/checks/next' }));
 });
 
 it('uses the current revision for a self-correction even while offline', async () => {
