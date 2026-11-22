@@ -129,6 +129,8 @@ test('Queue counts, indexed claims, private search and recovery of assignments',
   assert.equal(first.data.items[0].referenceAnswer, undefined);
   assert.equal((await api('GET', url, { role: 'observer', ifNoneMatch: first.headers.get('etag') })).status, 304);
   assert.equal((await api('GET', url, { role: 'organizer', ifNoneMatch: first.headers.get('etag') })).status, 403);
-  await expireLease(claims[0].data.lease);
+  const leases = claims.map(claim => claim.data.lease);
+  leases.sort((a, b) => Date.parse(b.expiresAt) - Date.parse(a.expiresAt));
+  await expireLease(leases[0]);
   assert.equal(expectStatus(await api('GET', '/review-queues?gameId=' + game, { role: 'checker' }), 200).answers, s.receipts.length);
 });
