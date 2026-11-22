@@ -3,6 +3,7 @@ import { ApiError } from './api';
 const errors: Record<string, string> = {
   UNAUTHENTICATED: 'Войдите в кабинет, чтобы продолжить.',
   FORBIDDEN: 'Для этого действия нужна другая роль.',
+  GAME_ACCESS_DENIED: 'Доступ к этой игре изменился. Выберите доступную игру.',
   SESSION_CHANGED: 'Учётная запись изменилась. Обновите страницу.',
   QR_UNREADABLE: 'QR не читается. Переснимите бланк.',
   QR_MISMATCH: 'На снимке QR другого бланка.',

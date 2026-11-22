@@ -62,12 +62,16 @@ it('exchanges the code once and proxies only data for the current user and sessi
     begin: vi.fn(async () => ({ url: 'https://issuer.example/signin', state: 'a' })),
     finish: vi.fn(async () => ({ token: 'observer-token', lifetime: 600 })),
   };
+  let allowed = true;
   const send = vi.fn(async (url, options) => {
     if (url === env.STAFF_IDENTITY_URL) {
       expect(options.headers.Authorization).toBe('Bearer integration');
       return Response.json({ active: true, userId: 'olga', roles: ['observer'] });
     }
-    if (url === env.STAFF_DIRECTORY_URL) return Response.json({ tournaments: [] });
+    if (url === env.STAFF_DIRECTORY_URL) {
+      expect(options.headers.Authorization).toBe('Bearer observer-token');
+      return Response.json({ tournaments: [{ games: allowed ? [{ id: 'game' }] : [] }] });
+    }
     if (String(url) === 'http://intake/receipts?gameId=game') {
       expect(options.headers.get('Authorization')).toBe('Bearer observer-token');
       return new Response(null, { status: 304, headers: { ETag: '"scope"', 'Cache-Control': 'private, no-cache' } });
@@ -99,14 +103,24 @@ it('exchanges the code once and proxies only data for the current user and sessi
     const Cookie = callback.headers.getSetCookie()[0].split(';')[0];
     expect((await call('/api/session', { headers: { Cookie } })).status).toBe(200);
     expect((await call('/api/context', { headers: { Cookie } })).status).toBe(200);
-    const headers = { Cookie, 'X-Staff-Actor': 'olga', Origin: 'https://staff.example' };
+    const headers = { Cookie, 'X-Staff-Actor': 'olga', 'X-Staff-Game': 'game', Origin: 'https://staff.example' };
     expect((await call('/api/intake/receipts', { headers: { ...headers, 'X-Staff-Actor': 'ivan' } })).status).toBe(409);
     expect((await call('/api/review/integrations/receipts', { headers })).status).toBe(404);
     expect((await call('/api/intake/receipts', { method: 'POST', headers: { Cookie } })).status).toBe(403);
     const cached = await call('/api/intake/receipts?gameId=game', { headers: { ...headers, 'If-None-Match': '"scope"' } });
     expect(cached.status).toBe(304);
     expect(cached.headers.get('vary')).toMatch(/Cookie/);
-    const mutation = await call('/api/intake/receipts', { method: 'POST', headers: { ...headers, 'Idempotency-Key': 'original' }, body: '{}' });
+    allowed = false;
+    const revoked = await call('/api/intake/receipts?gameId=game', { headers: { ...headers, 'If-None-Match': '"scope"' } });
+    expect(revoked.status).toBe(403);
+    expect(revoked.headers.get('cache-control')).toBe('no-store');
+    expect(revoked.headers.has('etag')).toBe(false);
+    allowed = true;
+    const write = (gameId) => call('/api/intake/receipts', { method: 'POST', headers: {
+      ...headers, 'Idempotency-Key': 'original',
+    }, body: JSON.stringify({ gameId }) });
+    expect((await write('other-game')).status).toBe(403);
+    const mutation = await write('game');
     expect(mutation.headers.get('operation-location')).toBe('/operations/one');
     expect(mutation.headers.get('cache-control')).toBe('no-store');
     expect(await mutation.json()).toEqual({ id: 'original' });

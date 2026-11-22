@@ -75,6 +75,7 @@ function Cabinet({ session, areas }: { session: Session; areas: Area[] }) {
   const active = visible.find(area => area.id === section) ?? visible[0];
   const games = directory.tournaments.flatMap(tournament => tournament.games);
   const game = games.find(item => item.id === gameId);
+  const gameApi = useMemo(() => api.forGame(gameId), [api, gameId]);
 
   useEffect(() => {
     let closed = false;
@@ -157,7 +158,7 @@ function Cabinet({ session, areas }: { session: Session; areas: Area[] }) {
         {failure && <p role="alert">{failure}</p>}
         {sessionExpired ? <p role="alert">Сеанс изменился. <a href="/">Открыть кабинет заново</a></p>
           : game && active ? <active.view key={game.id + ':' + active.id} actor={actor}
-              game={game} api={api} queue={queue} jobs={jobs.filter(job => job.gameId === game.id)}
+              game={game} api={gameApi} queue={queue} jobs={jobs.filter(job => job.gameId === game.id)}
               online={online} setDirty={setDirty}/>
             : <h1>{game ? 'Рабочие места' : 'Выберите игру'}</h1>}
         <details className="outbox">

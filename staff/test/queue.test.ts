@@ -73,7 +73,9 @@ it('forwards operation parameters through the authorized same-origin API', async
   expect(new Headers(options?.headers).get('X-Staff-Actor')).toBe('olga');
   expect(new Headers(options?.headers).get('Assignment-Token')).toBe('lease');
   expect(new Headers(options?.headers).get('Idempotency-Key')).toBe(job.key);
-  expect(await api.read('intake', '/receipts/1')).toEqual({ id: '1' });
+  expect(new Headers(options?.headers).get('X-Staff-Game')).toBe(job.gameId);
+  expect(await api.forGame('visible').read('intake', '/receipts/1')).toEqual({ id: '1' });
+  expect(new Headers(send.mock.calls[1][1]?.headers).get('X-Staff-Game')).toBe('visible');
   expect((await api.artifact('intake', '/receipts/1/image')).size).toBeGreaterThan(0);
   expect(await json(new Response(null, { status: 204 }))).toBeUndefined();
   await expect(json(response({ code: 'INACCESSIBLE' }, { status: 403 }))).rejects.toMatchObject({ code: 'INACCESSIBLE' });
@@ -92,4 +94,19 @@ it('calls the browser fetch without using the API client as its receiver', async
     const api = new StaffApi('olga');
     expect(await api.read('review', '/review-queues')).toEqual({ count: 1 });
   } finally { vi.unstubAllGlobals(); }
+});
+
+it('replays a pending assignment with the original key until the allocated card is returned', async () => {
+  const send = vi.fn<typeof fetch>()
+    .mockResolvedValueOnce(response({ operationId: 'work' }, { status: 202, headers: {
+      'Operation-Location': '/operations/work', 'Operation-Status': 'Running',
+    } }))
+    .mockResolvedValueOnce(response({ id: 'assignment' }, { headers: { 'Operation-Status': 'Completed' } }));
+  const api = new StaffApi('olga', send).forGame('g');
+  expect(await api.command({ service: 'review', path: '/checks/next', body: { gameId: 'g' } }))
+    .toEqual({ id: 'assignment' });
+  expect(send).toHaveBeenCalledTimes(2);
+  const [first, last] = send.mock.calls.map(([, options]) => options);
+  expect(new Headers(first?.headers).get('Idempotency-Key')).toBe(new Headers(last?.headers).get('Idempotency-Key'));
+  expect(first?.body).toBe(last?.body);
 });

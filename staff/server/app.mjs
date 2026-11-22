@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Sessions } from './session.mjs';
+import { belongsToGame, directoryContains } from './game-access.mjs';
 
 const routes = {
   materials: new Set(['blanks', 'kits', 'print-jobs', 'operations']),
@@ -63,6 +64,13 @@ export function app(config, identity, { send = fetch, read = readFile, root = 'd
     return { id: value.userId, roles: value.roles };
   }
 
+  function directory(token) {
+    return send(config.directoryUrl, {
+      headers: { Authorization: 'Bearer ' + token, 'Cache-Control': 'no-cache' },
+      redirect: 'error', signal: AbortSignal.timeout(10_000),
+    });
+  }
+
   return async (request, response) => {
     response.setHeader('Cache-Control', 'no-store');
     response.setHeader('X-Content-Type-Options', 'nosniff');
@@ -102,13 +110,8 @@ export function app(config, identity, { send = fetch, read = readFile, root = 'd
         if (!session) throw new RequestError(401, 'UNAUTHENTICATED');
         if (url.pathname === '/api/session' && method === 'GET')
           return json(response, 200, await actor(session.token));
-        if (url.pathname === '/api/context' && method === 'GET') {
-          const remote = await send(config.directoryUrl, {
-            headers: { Authorization: 'Bearer ' + session.token },
-            redirect: 'error', signal: AbortSignal.timeout(10_000),
-          });
-          return await relay(remote, response, false);
-        }
+        if (url.pathname === '/api/context' && method === 'GET')
+          return await relay(await directory(session.token), response, false);
         const [, , service, segment, ...rest] = url.pathname.split('/');
         if (!Object.hasOwn(routes, service) || !routes[service].has(segment) ||
             rest.some(part => !/^[a-zA-Z0-9_-]+$/.test(part)) || !['GET', 'POST', 'PUT'].includes(method))
@@ -116,13 +119,35 @@ export function app(config, identity, { send = fetch, read = readFile, root = 'd
         if (request.headers['x-staff-actor'] !== session.actorId)
           throw new RequestError(409, 'SESSION_CHANGED');
 
-        const destination = new URL([segment, ...rest].join('/') + url.search,
-          config.services[service].replace(/\/?$/, '/'));
+        const serviceBase = config.services[service].replace(/\/?$/, '/');
+        const destination = new URL([segment, ...rest].join('/') + url.search, serviceBase);
         const headers = new Headers({ Authorization: 'Bearer ' + session.token });
+        const bytes = method === 'GET' ? undefined : await body(request);
+        if (segment === 'operations') {
+          if (method !== 'GET' || rest.length !== 1) throw new RequestError(404, 'NOT_FOUND');
+        } else {
+          const gameId = request.headers['x-staff-game'];
+          if (!gameId) throw new RequestError(403, 'GAME_ACCESS_DENIED');
+          const access = await directory(session.token);
+          if (access.status === 401) throw new RequestError(401, 'UNAUTHENTICATED');
+          if (access.status === 403) throw new RequestError(403, 'GAME_ACCESS_DENIED');
+          if (!access.ok) throw new RequestError(503, 'DIRECTORY_UNAVAILABLE');
+          if (!directoryContains(await access.json(), gameId))
+            throw new RequestError(403, 'GAME_ACCESS_DENIED');
+          const allowed = await belongsToGame({ service, segment, rest, method, url, bytes, gameId }, async path => {
+            const result = await send(new URL(path, serviceBase), {
+              headers, redirect: 'error', signal: AbortSignal.timeout(8_000),
+            });
+            if (result.status === 401) throw new RequestError(401, 'UNAUTHENTICATED');
+            if (result.status >= 500 || result.status === 429) throw new RequestError(503, 'SERVICE_UNAVAILABLE');
+            return result.ok ? await result.json() : undefined;
+          });
+          if (!allowed) throw new RequestError(403, 'GAME_ACCESS_DENIED');
+        }
         for (const name of forwardedRequestHeaders)
           if (request.headers[name]) headers.set(name, request.headers[name]);
         const remote = await send(destination, {
-          method, headers, body: method === 'GET' ? undefined : await body(request),
+          method, headers, body: bytes,
           redirect: 'error', signal: AbortSignal.timeout(24_000),
         });
         return await relay(remote, response, method === 'GET');
@@ -158,7 +183,7 @@ async function relay(remote, response, allowValidation) {
   const cache = remote.headers.get('cache-control') ?? '';
   if (allowValidation && (remote.status === 200 || remote.status === 304) && cache.includes('private') && cache.includes('no-cache')) {
     response.setHeader('Cache-Control', 'private, no-cache');
-    response.setHeader('Vary', 'Cookie, X-Staff-Actor');
+    response.setHeader('Vary', 'Cookie, X-Staff-Actor, X-Staff-Game');
   }
   const data = await remote.arrayBuffer();
   response.writeHead(remote.status);

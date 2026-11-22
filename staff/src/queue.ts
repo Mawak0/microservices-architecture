@@ -1,4 +1,4 @@
-import { ApiError, json, type Command, type StaffApi } from './api';
+import { ApiError, json, pendingOperation, type Command, type StaffApi } from './api';
 
 export type JobState = 'queued' | 'accepted' | 'done' | 'conflict';
 export interface Job extends Command {
@@ -77,11 +77,9 @@ export async function advance(job: Job, api: Pick<StaffApi, 'read' | 'submit'>):
       return job;
     }
     const response = await api.submit(job, AbortSignal.timeout(12_000));
-    const location = response.headers.get('Operation-Location');
-    const status = response.headers.get('Operation-Status');
-    if (response.status === 202 && location && status !== 'Completed' ||
-        response.ok && location && ['Accepted', 'Running', 'AwaitingCheckpoint', 'Compensating'].includes(status ?? '')) {
-      if (!location || !/^\/operations\/[a-zA-Z0-9_-]+$/.test(location)) throw new ApiError(422, 'INVALID_OPERATION');
+    const location = pendingOperation(response);
+    if (location) {
+      if (!/^\/operations\/[a-zA-Z0-9_-]+$/.test(location)) throw new ApiError(422, 'INVALID_OPERATION');
       return { ...job, operation: location, state: 'accepted' };
     }
     const data = await json<{ id?: string } | undefined>(response);
