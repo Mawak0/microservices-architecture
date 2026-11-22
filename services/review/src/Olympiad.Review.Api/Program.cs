@@ -45,6 +45,7 @@ var leaseSeconds = configuration.GetValue("Runtime:LeaseSeconds", 300);
 if (leaseSeconds <= 0) throw new InvalidOperationException("Runtime:LeaseSeconds must be positive.");
 builder.Services.AddSingleton(new LeaseSettings(TimeSpan.FromSeconds(leaseSeconds)));
 builder.Services.AddSingleton<AppealEligibility>();
+builder.Services.AddSingleton<AppealAvailability>();
 builder.Services.AddSingleton<CheckQueries>();
 builder.Services.AddSingleton<IReviewWorklistReader, ReviewWorklistReader>();
 builder.Services.AddSingleton<ReceiveReceipt>();

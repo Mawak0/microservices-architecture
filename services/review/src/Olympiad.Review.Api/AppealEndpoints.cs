@@ -5,6 +5,8 @@ internal static class AppealEndpoints
 {
     public static void Map(WebApplication app)
     {
+        app.MapGet("/checks/{id}/appeal-availability", async (string id, HttpContext c, AppealAvailability handler) =>
+            Results.Ok(await handler.Get(id, c.RequestAborted))).WithMetadata(new Roles("observer"));
         app.MapPost("/appeals", async (HttpContext c, OpenAppeal handler) =>
         {
             var request = await Transport.Body<AppealRequest>(c);
