@@ -14,6 +14,27 @@ async function readyJob(id) {
 
 describe('ТЗ: бланки и печатные материалы', { concurrency: false }, () => {
   before(requireService);
+
+  it('Материалы фильтруются по игре, а валидатор проверяется после авторизации', async () => {
+    const s = await scenario(), other = await scenario();
+    const first = expectStatus(await issue(s, 2), 201).blanks;
+    expectStatus(await issue(other, 1), 201);
+    const url = '/blanks?limit=1&gameId=' + s.game.id;
+    const page = await api('GET', url, { role: 'observer' });
+    assert.equal(page.status, 200);
+    assert.equal(page.data.items[0].id, first[0].id);
+    assert.equal(page.data.nextOffset, 1);
+    assert.deepEqual(page.headers.get('cache-control').split(', ').sort(), ['no-cache', 'private']);
+    const validator = page.headers.get('etag');
+    assert.ok(validator);
+    assert.equal((await api('GET', url, { role: 'observer', ifNoneMatch: validator })).status, 304);
+    assert.equal((await api('GET', url, { role: 'organizer', ifNoneMatch: validator })).status, 403);
+    assert.equal((await api('GET', url + '&offset=1', { role: 'observer', ifNoneMatch: validator })).status, 200);
+    const kit = expectStatus(await prepare(s), 201);
+    assert.equal(expectStatus(await api('GET', '/kits?gameId=' + s.game.id), 200).items[0].id, kit.id);
+    assert.deepEqual(expectStatus(await api('GET', '/print-jobs?gameId=' + s.game.id), 200).items, []);
+  });
+
   it('M01 комплект использует настройки количества', async () => {
     const s = await scenario({ answerBlankCount: 7, taskCardCount: 2 }), kit = expectStatus(await prepare(s), 201);
     assert.equal(kit.gameId, s.game.id); assert.equal(kit.teamId, s.teamId);

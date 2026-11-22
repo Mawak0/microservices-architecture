@@ -4,4 +4,5 @@
     <ProjectReference Include="../Olympiad.Intake.Infrastructure/Olympiad.Intake.Infrastructure.csproj" />
     <ProjectReference Include="..\..\..\..\building-blocks\Olympiad.Workflows.Infrastructure\Olympiad.Workflows.Infrastructure.csproj" />
   </ItemGroup>
+  <ItemGroup><ProjectReference Include="../../../../building-blocks/Olympiad.Http/Olympiad.Http.csproj" /></ItemGroup>
 </Project>

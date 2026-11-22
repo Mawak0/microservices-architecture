@@ -28,7 +28,7 @@ public sealed record Admission(string GameId, int Version, string Status,
 }
 
 public sealed record BlankBinding(string BlankId, string GameId, string TeamId,
-    string TaskId, string TaskNumber)
+    string TaskId, string TaskNumber, BlankModifier? Modifier = null)
 {
     public void RequireValid()
     {
@@ -45,3 +45,5 @@ public sealed record TeamAdmission(string TeamId, string GameId, bool Admitted)
             throw new IntakeException(IntakeError.TeamNotAdmitted, "The team is not admitted to this game.");
     }
 }
+
+public sealed record BlankModifier(string Kind, decimal Value);

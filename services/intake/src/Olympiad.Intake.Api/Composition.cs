@@ -71,6 +71,8 @@ internal static class Composition
             throw new InvalidOperationException("Runtime:MaximumImageBytes must be between 1 and 15728640 bytes.");
         services.AddSingleton(new ImageLimits(maximumImageBytes));
         services.AddSingleton<IImageQrDecoder, SkiaQrDecoder>();
+        services.AddSingleton<IReceiptWorklistReader, ReceiptWorklistReader>();
+        services.AddSingleton<PreviewBlank>();
         services.AddSingleton<AcceptBlank>(); services.AddSingleton<SubmissionFinalizer>();
         services.AddSingleton<SynchronizeIntake>(); services.AddSingleton<CloseIntake>();
         services.AddSingleton<GetReceipt>(); services.AddSingleton<GetIntakeSession>(); services.AddSingleton<GetImage>();

@@ -11,12 +11,13 @@ export function requireService() {
   const url = new URL(process.env.SERVICE_BASE_URL);
   assert.ok(['http:', 'https:'].includes(url.protocol)); return url.href.replace(/\/$/, '');
 }
-export async function request(base, method, path, { body, role = 'admin', idempotencyKey = key(), assignmentToken } = {}) {
+export async function request(base, method, path, { body, role = 'admin', idempotencyKey = key(), assignmentToken, ifNoneMatch } = {}) {
   const headers = {};
   if (assignmentToken !== undefined) headers['assignment-token'] = assignmentToken;
   if (role !== null) headers.authorization = `Bearer ${token(role)}`;
   if (body !== undefined) headers['content-type'] = 'application/json';
   if (['POST', 'PUT'].includes(method)) headers['idempotency-key'] = idempotencyKey;
+  if (ifNoneMatch) headers['If-None-Match'] = ifNoneMatch;
   const res = await fetch(`${base}${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body),
     signal: AbortSignal.timeout(Number(process.env.TEST_TIMEOUT_MS || 10000)) });
   const raw = Buffer.from(await res.arrayBuffer());

@@ -12,12 +12,15 @@ public interface ICheckRepository
     AnswerCheck? Find(string id);
     AnswerCheck? FindByReceipt(string receiptId);
     IReadOnlyList<AnswerCheck> ForGame(string gameId);
+    AnswerCheck? NextAvailable(string gameId, DateTimeOffset now, bool appeal);
+    int CountAssigned(string actorId, DateTimeOffset now);
     void Save(AnswerCheck check);
 }
 public interface IAppealRepository
 {
     Appeal? Find(string id);
     bool Exists(string gameId, string teamId, string taskId);
+    Appeal? FindByCheck(string checkId);
     IReadOnlyList<Appeal> ForGame(string gameId);
     void Save(Appeal appeal);
 }

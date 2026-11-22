@@ -15,6 +15,24 @@ const expire = s => fixture('PATCH', `/__test/scenarios/${s.game.id}`, { submiss
 
 describe('ТЗ: приём бланков', { concurrency: false }, () => {
   before(requireService);
+
+  it('Предварительная проверка и журнал сверяются с реестром и выбранной игрой', async () => {
+    const s = await setup(), other = await setup();
+    const body = { gameId: s.game.id, qrToken: s.qrTokens[0] };
+    const preview = expectStatus(await api('POST', '/receipts/preview', { role: 'observer', body }), 200);
+    assert.equal(preview.blankId, s.blankIds[0]);
+    expectError(await submit(s, 0, { gameId: other.game.id }), 422, 'INVALID_QR');
+    const url = '/receipts?gameId=' + s.game.id;
+    const empty = await api('GET', url, { role: 'observer' });
+    const receipt = expectStatus(await submit(s, 0, { gameId: s.game.id }), 201);
+    const list = await api('GET', url, { role: 'observer', ifNoneMatch: empty.headers.get('etag') });
+    assert.equal(list.status, 200);
+    assert.equal(list.data.items[0].id, receipt.id);
+    assert.equal(list.data.items[0].imageRef, undefined);
+    assert.equal((await api('GET', url, { role: 'observer', ifNoneMatch: list.headers.get('etag') })).status, 304);
+    expectError(await api('POST', '/receipts/preview', { role: 'observer', body }), 409, 'BLANK_ALREADY_ACCEPTED');
+  });
+
   it('I01 подтверждение содержит сохранённый снимок и проверенную принадлежность', async () => {
     const s = await setup(), r = expectStatus(await submit(s), 201);
     assert.equal(r.blankId, s.blankIds[0]); assert.equal(r.teamId, s.teamId); assert.equal(r.gameId, s.game.id);

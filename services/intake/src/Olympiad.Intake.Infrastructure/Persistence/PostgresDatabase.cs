@@ -10,6 +10,7 @@ public sealed class PostgresDatabase : IIntakeUnitOfWork
 
     private readonly PostgresStore store;
     public PostgresDatabase(string connectionString) => store = new(connectionString);
+    internal Task<NpgsqlConnection> OpenAsync(CancellationToken ct) => store.OpenAsync(ct);
     public Task InitializeAsync(CancellationToken ct = default) => store.InitializeAsync(Schema, ct);
 
     public Task<T> ExecuteAsync<T>(Func<IIntakeTransaction, CancellationToken, Task<T>> action, CancellationToken ct) =>

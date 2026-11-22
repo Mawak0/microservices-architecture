@@ -1,4 +1,4 @@
-import { describe, it, before } from 'node:test';
+import { describe, it, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { api, fixture, scenario, requireService, expectStatus, expectError, key, eventually, events, clockNow, advanceClock } from '../test-support/client.mjs';
 
@@ -54,6 +54,7 @@ const manifest = async (s, ids, admissionVersion) => api('POST', '/integrations/
 
 describe('ТЗ: проверка и апелляции', { concurrency: false }, () => {
   before(requireService);
+  beforeEach(() => advanceClock(301_000));
   it('R01 повтор eventId и receiptId не создаёт второе дело', async () => {
     const s = await setup(), body = receiptEvent(s), options = { role: 'system', body };
     const a = expectStatus(await api('POST', '/integrations/receipts', options), 201);

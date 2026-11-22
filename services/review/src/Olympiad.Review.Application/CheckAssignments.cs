@@ -9,7 +9,9 @@ public sealed class CheckAssignments(ITransactions transactions, IClock clock, L
         var now = await clock.Now(cancellationToken);
         return await transactions.Run(identity, s =>
         {
-            var c = s.Check(id); c.Claim(identity.ActorId, Guid.NewGuid().ToString(), now, settings.Duration, false);
+            var c = s.Check(id);
+            AssignmentCapacity.Require(s.Checks, identity.ActorId, now);
+            c.Claim(identity.ActorId, Guid.NewGuid().ToString(), now, settings.Duration, false);
             s.Checks.Save(c); return new Outcome<CheckView>(CheckView.From(c));
         }, cancellationToken);
     }
@@ -20,9 +22,8 @@ public sealed class CheckAssignments(ITransactions transactions, IClock clock, L
         var now = await clock.Now(cancellationToken);
         return await transactions.Run<CheckView?>(identity, s =>
         {
-            var checks = s.Checks.ForGame(gameId);
-            foreach (var c in checks) if (c.Expire(now)) s.Checks.Save(c);
-            var next = checks.FirstOrDefault(c => c.Stage == CheckStage.Pending);
+            if (AssignmentCapacity.IsFull(s.Checks, identity.ActorId, now)) return new(null);
+            var next = s.Checks.NextAvailable(gameId, now, appeal: false);
             if (next is null) return new(null);
             next.Claim(identity.ActorId, Guid.NewGuid().ToString(), now, settings.Duration, false);
             s.Checks.Save(next); return new(CheckView.From(next));

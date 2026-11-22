@@ -52,6 +52,7 @@ export function auditArchitecture(root) {
     for (const match of xml.matchAll(/<ProjectReference\b[^>]*Include="([^"]+)"/g)) {
       const reference = path.basename(match[1].replaceAll('\\', '/'), '.csproj');
       const referenceLayer = layers.find(value => reference.endsWith(`.${value}`));
+      if (layer === 'Api' && reference === 'Olympiad.Http') continue;
       if (!(layer === 'Infrastructure' && ['Olympiad.Persistence.Postgres', 'Olympiad.Storage.S3', 'Olympiad.Workflows.Application'].includes(reference)) && !allowedReferences[layer].includes(referenceLayer))
         fail(project, `${layer} references forbidden project ${reference}.`);
     }

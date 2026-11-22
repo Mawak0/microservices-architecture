@@ -8,6 +8,11 @@ internal sealed class AppealRepository(DatabaseScope database) : IAppealReposito
         var state = database.Read<AppealSnapshot>("SELECT snapshot FROM appeals WHERE id=@id", ("@id", id));
         return state is null ? null : Appeal.Restore(state);
     }
+    public Appeal? FindByCheck(string checkId)
+    {
+        var state = database.Read<AppealSnapshot>("SELECT snapshot FROM appeals WHERE check_id=@check", ("@check", checkId));
+        return state is null ? null : Appeal.Restore(state);
+    }
     public bool Exists(string gameId, string teamId, string taskId)
     {
         using var command = database.Command("""

@@ -28,3 +28,7 @@ PRIMARY KEY(scope,key));
 CREATE TABLE IF NOT EXISTS outbox (
 event_id TEXT PRIMARY KEY, message_json TEXT NOT NULL, delivered INTEGER NOT NULL DEFAULT 0, arrival_order BIGINT GENERATED ALWAYS AS IDENTITY);
 CREATE INDEX IF NOT EXISTS outbox_pending ON outbox(delivered);
+CREATE INDEX IF NOT EXISTS kits_game_search ON kits(game_id,id);
+CREATE INDEX IF NOT EXISTS blanks_game_search ON blanks(game_id,number);
+CREATE INDEX IF NOT EXISTS blanks_team_task_search ON blanks(game_id,team_id,task_id);
+CREATE INDEX IF NOT EXISTS print_jobs_game_search ON print_jobs(game_id,created_order DESC,id);

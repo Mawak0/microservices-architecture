@@ -341,6 +341,111 @@
             }
           }
         }
+      },
+      "get": {
+        "operationId": "searchReceipts",
+        "x-roles": [
+          "observer",
+          "admin"
+        ],
+        "parameters": [
+          {
+            "name": "gameId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "teamId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "taskId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "blankId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100000
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Актуальное состояние",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Требуется вход"
+          },
+          "403": {
+            "description": "Недостаточно прав"
+          },
+          "422": {
+            "description": "Некорректные параметры"
+          },
+          "304": {
+            "description": "Представление не изменилось"
+          }
+        }
       }
     },
     "/receipts/{id}": {
@@ -502,6 +607,51 @@
           }
         }
       }
+    },
+    "/receipts/preview": {
+      "post": {
+        "operationId": "previewReceipt",
+        "x-roles": [
+          "observer",
+          "admin"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "gameId",
+                  "qrToken"
+                ],
+                "properties": {
+                  "gameId": {
+                    "type": "string"
+                  },
+                  "qrToken": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Авторизованные данные бланка"
+          },
+          "403": {
+            "description": "Недостаточно прав"
+          },
+          "409": {
+            "description": "Приём закрыт или бланк уже принят"
+          },
+          "422": {
+            "description": "Некорректный QR или игра"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -595,6 +745,10 @@
           },
           "legibilityConfirmed": {
             "const": true
+          },
+          "gameId": {
+            "type": "string",
+            "minLength": 1
           }
         }
       },

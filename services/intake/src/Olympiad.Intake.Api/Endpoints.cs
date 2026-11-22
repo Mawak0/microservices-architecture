@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using Olympiad.Http;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Olympiad.Intake.Application;
@@ -36,9 +37,28 @@ internal static class Endpoints
             byte[] image;
             try { image = Convert.FromBase64String(request.ImageBase64); }
             catch (FormatException) { throw new IntakeException(IntakeError.InvalidImage, "Image is not valid base64."); }
-            var result = await useCase.ExecuteAsync(new(request.QrToken, image, request.ImageMediaType, request.LegibilityConfirmed),
+            var result = await useCase.ExecuteAsync(new(request.QrToken, image, request.ImageMediaType, request.LegibilityConfirmed, request.GameId),
                 Identity(context, request), context.RequestAborted);
             return Results.Json(ReceiptResponse.From(result.Receipt), statusCode: result.Replayed ? 200 : 201);
+        }).WithMetadata(new RequiredRoles("observer"));
+        app.MapGet("/receipts", async (HttpContext c, IReceiptWorklistReader reader) =>
+        {
+            if (!PrivateResponses.TryPage(c.Request, out var offset, out var limit))
+                throw new IntakeException(IntakeError.ValidationError, "Invalid pagination.");
+            string? Filter(string key) => c.Request.Query[key].FirstOrDefault();
+            var search = new ReceiptSearch(Required(Filter("gameId")),Filter("teamId"),Filter("taskId"),
+                Filter("blankId"),Filter("id"),offset,limit);
+            var rows = await reader.SearchAsync(search, c.RequestAborted);
+            return PrivateResponses.Revalidate(c, ((Actor)c.Items[typeof(Actor)]!).UserId, new
+            {
+                items = rows.Take(limit).ToArray(),
+                nextOffset = rows.Count > limit ? (int?)(offset + limit) : null
+            });
+        }).WithMetadata(new RequiredRoles("observer"));
+        app.MapPost("/receipts/preview", async (HttpContext c, PreviewBlank handler) =>
+        {
+            var request = await ReadAsync<PreviewRequest>(c);
+            return Results.Ok(await handler.ExecuteAsync(Required(request.GameId), Required(request.QrToken), c.RequestAborted));
         }).WithMetadata(new RequiredRoles("observer"));
         app.MapGet("/receipts/{id}", async (string id, HttpContext context, GetReceipt useCase) =>
             Results.Ok(ReceiptResponse.From(await useCase.ExecuteAsync(id, context.RequestAborted))))
@@ -51,6 +71,9 @@ internal static class Endpoints
     }
     private static async Task<T> ReadAsync<T>(HttpContext context) => await JsonSerializer.DeserializeAsync<T>(context.Request.Body, InputJson, context.RequestAborted)
         ?? throw new IntakeException(IntakeError.ValidationError, "A request body is required.");
+    private static string Required(string? value) => !string.IsNullOrWhiteSpace(value) ? value
+        : throw new IntakeException(IntakeError.ValidationError, "A nonempty identifier is required.");
+    private sealed record PreviewRequest(string GameId, string QrToken);
     private static void ValidateVersion(int version)
     { if (version < 1) throw new IntakeException(IntakeError.ValidationError, "Admission version must be positive."); }
     private static OperationIdentity Identity<T>(HttpContext context, T request)
@@ -70,6 +93,8 @@ internal static class Endpoints
         public required string ImageBase64 { get; init; }
         public required string ImageMediaType { get; init; }
         public required bool LegibilityConfirmed { get; init; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? GameId { get; init; }
     }
     private sealed record ReceiptResponse(string Id, string BlankId, string GameId, int AdmissionVersion,
         string TeamId, string ImageRef, DateTimeOffset AcceptedAt, string TaskId, string TaskNumber)

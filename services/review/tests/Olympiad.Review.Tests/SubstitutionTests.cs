@@ -60,6 +60,14 @@ public sealed class SubstitutionTests
             .Where(v => v.Receipt.Id == receiptId).Select(AnswerCheck.Restore).FirstOrDefault();
         public IReadOnlyList<AnswerCheck> ForGame(string gameId) => values.Values
             .Where(v => v.Receipt.GameId == gameId).Select(AnswerCheck.Restore).ToArray();
+        public AnswerCheck? NextAvailable(string gameId, DateTimeOffset now, bool appeal) =>
+            ForGame(gameId).FirstOrDefault(check =>
+            {
+                check.Expire(now);
+                return check.Stage == (appeal ? CheckStage.AppealPending : CheckStage.Pending);
+            });
+        public int CountAssigned(string actorId, DateTimeOffset now) => values.Values.Count(snapshot =>
+            snapshot.Assignment is { } assignment && assignment.ActorId == actorId && assignment.ExpiresAt > now);
         public void Save(AnswerCheck check) => values[check.Id] = check.Snapshot();
     }
 }
