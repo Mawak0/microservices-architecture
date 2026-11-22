@@ -15,3 +15,5 @@ test-results/
 
 /deploy/.env
 /.demo-data/
+
+/staff/dist/

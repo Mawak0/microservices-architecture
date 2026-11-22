@@ -1,0 +1,31 @@
+x-staff-platform: &staff-platform
+  Dependencies__BaseUrl: ${STAFF_PLATFORM_URL:?Set STAFF_PLATFORM_URL}
+  Dependencies__AccessToken: ${STAFF_PLATFORM_SERVICE_TOKEN:?Set STAFF_PLATFORM_SERVICE_TOKEN}
+services:
+  materials:
+    environment:
+      <<: *staff-platform
+      Dependencies__TemplatesBaseUrl: ${STAFF_PLATFORM_URL:?Set STAFF_PLATFORM_URL}
+  intake:
+    environment:
+      <<: *staff-platform
+  review:
+    environment:
+      <<: *staff-platform
+  staff:
+    build:
+      context: ..
+      dockerfile: staff/Dockerfile
+    ports: ['127.0.0.1:19184:19184']
+    environment:
+      STAFF_ORIGIN: ${STAFF_ORIGIN:?Set STAFF_ORIGIN}
+      STAFF_OIDC_ISSUER: ${STAFF_OIDC_ISSUER:?Set STAFF_OIDC_ISSUER}
+      STAFF_OIDC_CLIENT_ID: ${STAFF_OIDC_CLIENT_ID:?Set STAFF_OIDC_CLIENT_ID}
+      STAFF_OIDC_CLIENT_SECRET: ${STAFF_OIDC_CLIENT_SECRET:-}
+      STAFF_OIDC_SCOPE: ${STAFF_OIDC_SCOPE:-openid}
+      STAFF_IDENTITY_URL: ${STAFF_IDENTITY_URL:?Set STAFF_IDENTITY_URL}
+      STAFF_IDENTITY_SERVICE_TOKEN: ${STAFF_IDENTITY_SERVICE_TOKEN:-}
+      STAFF_DIRECTORY_URL: ${STAFF_DIRECTORY_URL:?Set STAFF_DIRECTORY_URL}
+      STAFF_MATERIALS_URL: http://materials:8080
+      STAFF_INTAKE_URL: http://intake:8080
+      STAFF_REVIEW_URL: http://review:8080

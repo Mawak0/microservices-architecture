@@ -99,7 +99,7 @@ jobs:
       - name: Install PDF test dependencies
         if: contains(matrix.branch, 'materials')
         run: sudo apt-get update && sudo apt-get install -y fonts-dejavu-core poppler-utils
-      - name: Measure all .NET source assemblies
+      - name: Measure server and staff coverage by branch
         env:
           SOURCE_BRANCH: ${{ matrix.branch }}
           SOURCE_SHA: ${{ matrix.sha }}
@@ -182,6 +182,23 @@ jobs:
                       failed = True
               elif projects:
                   record['status'] = 'no-tests'
+              if record.get('total') and all((source / 'services' / name / 'src').is_dir()
+                      for name in ('intake', 'materials', 'review')) and 100 * record['covered'] < 85 * record['total']:
+                  record['status'] = 'below-threshold'
+                  failed = True
+              if (source / 'staff/package-lock.json').is_file():
+                  if run(['npm', 'ci', '--prefix', 'staff']):
+                      run(['npm', 'test', '--prefix', 'staff'])
+                  summary = source / 'staff/coverage/coverage-summary.json'
+                  if summary.is_file():
+                      lines = json.loads(summary.read_text(encoding='utf-8'))['total']['lines']
+                      record.update(staff_covered=lines['covered'], staff_total=lines['total'])
+                      if 100 * lines['covered'] < 85 * lines['total']:
+                          record['status'] = 'below-threshold'
+                          failed = True
+                  else:
+                      record['status'] = 'partial'
+                      failed = True
           except Exception as error:
               record['status'] = 'error'
               record['error'] = str(error)
@@ -245,11 +262,11 @@ jobs:
           records = {name: record for name, record in records.items() if name in heads}
           data_path.parent.mkdir(parents=True, exist_ok=True)
           rows = ['## Покрытие по веткам', '',
-                  'Покрытие исполняемых строк .NET-кода, включая все сборки сервиса и API. JavaScript-стенд и тестовые сборки не входят в процент.', '',
-                  '| Ветка | Покрытие | Строки | Проверка | Коммит |',
-                  '| --- | --- | ---: | --- | --- |']
+                  'Покрытие исполняемых строк сервисов .NET и кабинета сотрудников. Нажмите на процент, чтобы открыть измерение.', '',
+                  '| Ветка | Покрытие .NET | Строки .NET | Кабинет | Проверка | Коммит |',
+                  '| --- | --- | ---: | ---: | --- | --- |']
           labels = {'ok': 'Тесты пройдены', 'no-dotnet': 'Нет .NET-проектов', 'no-tests': 'Нет .NET-тестов',
-                    'tests-failed': 'Есть ошибки тестов/сборки', 'partial': 'Неполный отчёт', 'error': 'Ошибка измерения'}
+                    'below-threshold': 'Покрытие ниже 85%', 'tests-failed': 'Есть ошибки тестов/сборки', 'partial': 'Неполный отчёт', 'error': 'Ошибка измерения'}
           for branch in sorted(heads, key=lambda b: (b != 'main', not b.startswith('contracts/'), b)):
               record = records.get(branch, {})
               shown = escape(branch).replace('|', '&#124;').replace('`', '&#96;')
@@ -277,7 +294,11 @@ jobs:
               else:
                   badge, counts = '—', '—'
               commit = f'[{sha[:7]}](https://github.com/{repo}/commit/{sha})' if sha else '—'
-              rows.append(f'| {branch_link} | {badge} | {counts} | {status} | {commit} |')
+              staff = '—'
+              if record.get('staff_total'):
+                  ratio = 100 * record['staff_covered'] / record['staff_total']
+                  staff = f'{ratio:.2f}% ({record["staff_covered"]}/{record["staff_total"]})'
+              rows.append(f'| {branch_link} | {badge} | {counts} | {staff} | {status} | {commit} |')
           rows += ['', 'Проценты разных веток не суммируются: ветки могут содержать одинаковый код. Таблица обновляется после CI; по нажатию на бейдж открывается запуск измерения.']
           block = '<!-- branch-coverage:start -->\n' + '\n'.join(rows) + '\n<!-- branch-coverage:end -->'
           readme = Path('README.md')

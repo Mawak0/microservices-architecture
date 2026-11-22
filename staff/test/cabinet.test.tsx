@@ -1,0 +1,66 @@
+import 'fake-indexeddb/auto';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, expect, it, vi } from 'vitest';
+import { StaffApp, type Area } from '../src/app';
+import { OutboxStore } from '../src/outbox-store';
+
+const directory = { tournaments: [{ id: 't', name: 'Финал', games: [
+  { id: 'g', name: 'Бонусы', tasks: [], teams: [] }, { id: 'd', name: 'Домино', tasks: [], teams: [] },
+] }] };
+const areas: Area[] = [
+  { id: 'c', role: 'checker', title: 'Проверка', view: ({ game, setDirty }) =>
+    <button onClick={() => setDirty(true)}>{game.name + ' · проверка'}</button> },
+  { id: 'o', role: 'observer', title: 'Приём', view: () => <p>Бланки</p> },
+];
+const answer = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status });
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); sessionStorage.clear(); });
+
+it('shows only authorized rooms and guards an unfinished action on game switch', async () => {
+  vi.stubGlobal('fetch', vi.fn(async (path: string) =>
+    path === '/api/session' ? answer({ id: 'checker', roles: ['checker'] }) : answer(directory)));
+  const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true);
+  render(<StaffApp areas={areas}/>);
+  const picker = await screen.findByLabelText('Игра');
+  expect(screen.queryByRole('button', { name: 'Приём' })).toBeNull();
+  fireEvent.change(picker, { target: { value: 'g' } });
+  fireEvent.click(screen.getByText('Бонусы · проверка'));
+  fireEvent.change(picker, { target: { value: 'd' } });
+  expect(screen.queryByText('Домино · проверка')).toBeNull();
+  fireEvent.change(picker, { target: { value: 'd' } });
+  expect(screen.getByText('Домино · проверка')).toBeDefined();
+  expect(confirm).toHaveBeenCalledTimes(2);
+  fireEvent(window, new Event('offline'));
+  expect(screen.getByText('На связи')).toBeDefined();
+});
+
+it('returns to login and does not show another profile’s queue', async () => {
+  const store = new OutboxStore();
+  await store.put({ actorId: 'other', gameId: 'g', key: 'foreign', path: '/receipts', service: 'intake',
+    state: 'conflict', label: 'Чужой бланк', createdAt: 0 });
+  await store.put({ actorId: 'self', gameId: 'g', key: 'mine', path: '/receipts', service: 'intake',
+    state: 'conflict', label: 'Мой бланк', error: 'QR_UNREADABLE', createdAt: 0 });
+  const sender = vi.fn(async (path: string) => path === '/api/session'
+    ? answer({ id: 'self', roles: ['observer', 'checker'] }) : answer(directory));
+  sender.mockResolvedValueOnce(answer({ code: 'UNAUTHENTICATED' }, 401));
+  vi.stubGlobal('fetch', sender);
+  const { unmount } = render(<StaffApp areas={areas}/>);
+  expect((await screen.findByText('Войти')).getAttribute('href')).toBe('/auth/login');
+  unmount();
+  render(<StaffApp areas={areas}/>);
+  expect(await screen.findByText(/Мой бланк/)).toBeDefined();
+  expect(screen.queryByText(/Чужой бланк/)).toBeNull();
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  fireEvent.click(screen.getByRole('button', { name: 'Убрать', hidden: true }));
+  await waitFor(() => expect(screen.queryByText(/Мой бланк/)).toBeNull());
+});
+
+it('offers recovery when the catalog could not be read', async () => {
+  const sender = vi.fn(async (path: string) => path === '/api/session'
+    ? answer({ id: 'a', roles: [] }) : answer(directory));
+  sender.mockRejectedValueOnce(new TypeError('offline'));
+  vi.stubGlobal('fetch', sender);
+  render(<StaffApp areas={[]}/>);
+  expect(await screen.findByRole('alert')).toBeDefined();
+  fireEvent.click(screen.getByRole('button', { name: 'Повторить' }));
+  expect(await screen.findByLabelText('Игра')).toBeDefined();
+});
