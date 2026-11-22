@@ -253,6 +253,58 @@ public sealed class ApiTests
         await Error(response, status, code);
     }
 
+    [Fact]
+    public async Task JournalAndPreviewValidateTheGameAndRevalidateOnlyAfterAuthorization()
+    {
+        await using var app = new ApiFixture(workflows: true);
+        using var client = app.CreateClient();
+        using var opened = await Olympiad.Testing.DurableHttp.Settled(() =>
+            app.Send(client, HttpMethod.Put, "/intake-sessions/game", new { admissionVersion = 1 }));
+        Assert.Equal(HttpStatusCode.OK, opened.StatusCode);
+        using var preview = await app.Send(client, HttpMethod.Post, "/receipts/preview",
+            new { gameId = "game", qrToken = "registered" }, "observer", key: null);
+        Assert.Equal(HttpStatusCode.OK, preview.StatusCode);
+        Assert.False(preview.Headers.Contains("Operation-Id"));
+        Assert.Equal("blank", (await preview.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("blankId").GetString());
+        await Error(await app.Send(client, HttpMethod.Post, "/receipts/preview",
+            new { gameId = "other", qrToken = "registered" }, "observer"), 422, "INVALID_QR");
+        await Error(await app.Send(client, HttpMethod.Get, "/receipts?gameId=game&limit=101", token: "observer"),
+            422, "VALIDATION_ERROR");
+
+        const string path = "/receipts?gameId=game&teamId=team&taskId=task&blankId=blank&limit=1";
+        using var empty = await app.Send(client, HttpMethod.Get, path, token: "observer");
+        Assert.Empty((await empty.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("items").EnumerateArray());
+
+        var body = app.Blank();
+        using var accepted = await Olympiad.Testing.DurableHttp.Settled(() =>
+            app.Send(client, HttpMethod.Post, "/receipts", body, "observer", "journal-filter"));
+        Assert.Equal(HttpStatusCode.Created, accepted.StatusCode);
+        var id = (await accepted.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetString();
+
+        using var updated = await Validate("observer", empty.Headers.ETag!.Tag);
+        Assert.Equal(HttpStatusCode.OK, updated.StatusCode);
+        Assert.True(updated.Headers.CacheControl!.Private && updated.Headers.CacheControl.NoCache);
+        var item = Assert.Single((await updated.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("items").EnumerateArray());
+        Assert.Equal(id, item.GetProperty("id").GetString());
+        Assert.False(item.TryGetProperty("imageRef", out _));
+        using var unchanged = await Validate("observer", updated.Headers.ETag!.Tag);
+        Assert.Equal(HttpStatusCode.NotModified, unchanged.StatusCode);
+        using var forbidden = await Validate("checker", updated.Headers.ETag.Tag);
+        Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
+        using var otherGame = await app.Send(client, HttpMethod.Get, "/receipts?gameId=other", token: "observer");
+        Assert.Empty((await otherGame.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("items").EnumerateArray());
+        await Error(await app.Send(client, HttpMethod.Post, "/receipts/preview",
+            new { gameId = "game", qrToken = "registered" }, "observer"), 409, "BLANK_ALREADY_ACCEPTED");
+
+        async Task<HttpResponseMessage> Validate(string token, string tag)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, path);
+            request.Headers.Authorization = new("Bearer", token);
+            request.Headers.IfNoneMatch.Add(new(tag));
+            return await client.SendAsync(request);
+        }
+    }
+
     private static async Task Error(HttpResponseMessage response, int status, string code)
     {
         using (response) { Assert.Equal(status, (int)response.StatusCode); Assert.Equal(code, (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString()); }
