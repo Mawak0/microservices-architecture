@@ -2,7 +2,7 @@
   "contracts/intake-service": {
     "branch": "contracts/intake-service",
     "covered": 629,
-    "run": "https://github.com/Mawak0/microservices-architecture/actions/runs/45008776717",
+    "run": "https://github.com/Mawak0/microservices-architecture/actions/runs/45009382079",
     "sha": "018061d8c2004e12af14c956d94fc055e6ee7c8e",
     "status": "ok",
     "total": 667
@@ -10,7 +10,7 @@
   "contracts/materials-service": {
     "branch": "contracts/materials-service",
     "covered": 866,
-    "run": "https://github.com/Mawak0/microservices-architecture/actions/runs/45008776717",
+    "run": "https://github.com/Mawak0/microservices-architecture/actions/runs/45009382079",
     "sha": "67437ab15e912a9a0f0f98ecc03b23da6b0eb943",
     "status": "ok",
     "total": 927
@@ -18,23 +18,23 @@
   "contracts/review-service": {
     "branch": "contracts/review-service",
     "covered": 968,
-    "run": "https://github.com/Mawak0/microservices-architecture/actions/runs/45008776717",
+    "run": "https://github.com/Mawak0/microservices-architecture/actions/runs/45009382079",
     "sha": "2f687ab39c61b0878856f973c800326a883d6714",
     "status": "ok",
     "total": 999
   },
   "feature/durable-sagas": {
     "branch": "feature/durable-sagas",
-    "covered": 2984,
-    "run": "https://github.com/Mawak0/microservices-architecture/actions/runs/45008776717",
+    "covered": 2983,
+    "run": "https://github.com/Mawak0/microservices-architecture/actions/runs/45009382079",
     "sha": "6298e664a8d6e88d7dbec57046f394ec15e6a7f5",
     "status": "ok",
     "total": 3149
   },
   "feature/integrated-storage-stand": {
     "branch": "feature/integrated-storage-stand",
-    "covered": 3020,
-    "run": "https://github.com/Mawak0/microservices-architecture/actions/runs/45008776717",
+    "covered": 3012,
+    "run": "https://github.com/Mawak0/microservices-architecture/actions/runs/45009382079",
     "sha": "07276a95ba76d10a29eb7d29a023e26a83c050aa",
     "status": "ok",
     "total": 3191
@@ -42,7 +42,7 @@
   "feature/postgres-storage": {
     "branch": "feature/postgres-storage",
     "covered": 2386,
-    "run": "https://github.com/Mawak0/microservices-architecture/actions/runs/45008776717",
+    "run": "https://github.com/Mawak0/microservices-architecture/actions/runs/45009382079",
     "sha": "061b4373e198810ea599f7793f31ed0078b1c295",
     "status": "ok",
     "total": 2514
@@ -50,39 +50,55 @@
   "feature/s3-storage": {
     "branch": "feature/s3-storage",
     "covered": 2474,
-    "run": "https://github.com/Mawak0/microservices-architecture/actions/runs/45008776717",
+    "run": "https://github.com/Mawak0/microservices-architecture/actions/runs/45009382079",
     "sha": "3df5b3fa2ff38c3ceaff874fbeec54f5608f39d9",
     "status": "ok",
     "total": 2627
   },
   "feature/staff-api-cache": {
     "branch": "feature/staff-api-cache",
-    "covered": 3220,
-    "run": "https://github.com/Mawak0/microservices-architecture/actions/runs/45008776717",
-    "sha": "0ea53d61673f766518dbc9f02db5c50733344254",
+    "covered": 3215,
+    "run": "https://github.com/Mawak0/microservices-architecture/actions/runs/45009382079",
+    "sha": "be887df70ccfea9660a9facaf8f731b47f616f10",
     "status": "ok",
-    "total": 3464
+    "total": 3465
+  },
+  "feature/staff-cabinet": {
+    "branch": "feature/staff-cabinet",
+    "covered": 3394,
+    "run": "https://github.com/Mawak0/microservices-architecture/actions/runs/45009382079",
+    "sha": "1a2395865ee75aa5184e1385ca0cd1e53f088d1d",
+    "status": "ok",
+    "total": 3790
+  },
+  "feature/staff-retakes": {
+    "branch": "feature/staff-retakes",
+    "covered": 3389,
+    "run": "https://github.com/Mawak0/microservices-architecture/actions/runs/45009382079",
+    "sha": "69116f44e5f877ae15d8b256cc0cd26e5704126d",
+    "status": "ok",
+    "total": 3790
   },
   "fix/coverage-test-dependencies": {
     "branch": "fix/coverage-test-dependencies",
-    "covered": 2463,
-    "run": "https://github.com/Mawak0/microservices-architecture/actions/runs/45008776717",
+    "covered": 2469,
+    "run": "https://github.com/Mawak0/microservices-architecture/actions/runs/45009382079",
     "sha": "e0fa441a5659e21c9e077d38ff606f1029b8fc1d",
     "status": "ok",
     "total": 2593
   },
   "main": {
     "branch": "main",
-    "covered": 2463,
-    "run": "https://github.com/Mawak0/microservices-architecture/actions/runs/45008776717",
-    "sha": "34f6308532a643b953b1f27dd62b0e36f514dda8",
+    "covered": 2464,
+    "run": "https://github.com/Mawak0/microservices-architecture/actions/runs/45009382079",
+    "sha": "aac1a96abb8131e0cc129e447bb2bf2ddcabdeed",
     "status": "ok",
     "total": 2593
   },
   "review-layout": {
     "branch": "review-layout",
     "covered": null,
-    "run": "https://github.com/Mawak0/microservices-architecture/actions/runs/45008776717",
+    "run": "https://github.com/Mawak0/microservices-architecture/actions/runs/45009382079",
     "sha": "4bcef0017d3cf16826090a8c03bdddf67babcfc6",
     "status": "no-dotnet",
     "total": null
