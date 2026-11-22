@@ -2045,6 +2045,39 @@
           }
         }
       }
+    },
+    "/checks/{id}/appeal-availability": {
+      "get": {
+        "operationId": "appealAvailability",
+        "x-roles": [
+          "observer",
+          "admin"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Допустимость апелляции и оставшаяся квота"
+          },
+          "401": {
+            "description": "Требуется вход"
+          },
+          "403": {
+            "description": "Недостаточно прав"
+          },
+          "404": {
+            "description": "Дело не найдено"
+          }
+        }
+      }
     }
   },
   "components": {

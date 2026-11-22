@@ -175,3 +175,17 @@ test('Retake releases a lease, requires a matching event and resumes only the ne
   assert.ok(current.imageRef.endsWith('/versions/2'));
   assert.equal((await getQuota(s)).used, 0);
 });
+
+test('Appeal availability reflects the source of truth without spending quota', async () => {
+  const { s, check, path } = await assignedWork('checks');
+  const availability = path + '/appeal-availability';
+  expectError(await api('GET', availability, { role: 'organizer' }), 403, 'FORBIDDEN');
+  assert.equal(expectStatus(await api('GET', availability, { role: 'observer' }), 200).code, 'CHECK_NOT_REVIEWED');
+  expectStatus(await api('POST', path + '/verdict', { role: 'checker',
+    assignmentToken: check.lease.token, body: { verdict: 'incorrect' } }), 200);
+  assert.deepEqual(expectStatus(await api('GET', availability, { role: 'observer' }), 200),
+    { allowed: true, remaining: 2, code: null });
+  expectStatus(await api('POST', '/appeals', { role: 'observer',
+    body: { checkId: check.id, reason: 'Пересмотреть решение' } }), 201);
+  assert.equal(expectStatus(await api('GET', availability, { role: 'observer' }), 200).code, 'APPEAL_ALREADY_USED');
+});

@@ -56,3 +56,16 @@ summary { cursor: pointer; font-weight: 600; }
   .layout nav { display: flex; flex-wrap: wrap; padding-bottom: 0; }
   .columns { grid-template-columns: 1fr; }
 }
+.scanner-preview {
+  display: block;
+  max-width: 100%;
+  width: auto;
+  max-height: 28rem;
+  object-fit: contain;
+  background: #eef2f7;
+}
+.scanner-preview[hidden] { display: none; }
+.records { list-style: none; padding: 0; margin: .5rem 0; }
+.records li { display: flex; align-items: center; gap: .55rem; flex-wrap: wrap; padding: .45rem 0; border-bottom: 1px solid var(--edge); }
+.records li span { flex: 1; }
+fieldset { border: 1px solid var(--edge); border-radius: .4rem; }
