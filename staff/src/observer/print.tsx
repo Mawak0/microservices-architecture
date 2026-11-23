@@ -80,6 +80,7 @@ export function Printing({ game, actor, api, queue, jobs, online }: Workstation)
       {blanks.error != null && <p role="status">Список бланков недоступен.</p>}
       <fieldset>
         <legend>Бланки в PDF</legend>
+        {blanks.data?.items.length === 0 && blanks.error == null && <p>Бланки по этим фильтрам не найдены.</p>}
         {(blanks.data?.items ?? []).map(blank => <label key={blank.id}>
           <input type="checkbox" checked={selected.includes(blank.id)}
             onChange={e => select(e.target.checked ? [...selected, blank.id] : selected.filter(id => id !== blank.id))}/>
@@ -110,6 +111,7 @@ export function Printing({ game, actor, api, queue, jobs, online }: Workstation)
       <h2>Задания печати</h2>
       <button className="quiet" onClick={list.reload}>Обновить список</button>
       {list.error != null && <p role="status">Список печати недоступен.</p>}
+      {list.data?.items.length === 0 && list.error == null && <p>Заданий печати пока нет.</p>}
       <ul className="records">{list.data?.items.map(job => <li key={job.id}>
         <span>{job.id.slice(0, 8)} · {job.status === 'completed' ? 'PDF готов' : job.status === 'failed' ? 'Ошибка подготовки' : 'Готовится'}</span>
         {job.status === 'completed' && <button className="quiet" disabled={working || !online} onClick={() => void safely(async () => {

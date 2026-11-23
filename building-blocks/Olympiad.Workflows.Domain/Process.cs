@@ -6,7 +6,7 @@ public sealed record ProcessResult(int StatusCode, string ContentType, byte[] Bo
 public sealed record ProcessSnapshot(string Id, string ActorId, string Scope, string Key, string Fingerprint,
     Invocation? Invocation, ProcessStatus Status, int Attempts, DateTimeOffset NextAttempt,
     string? LeaseToken, DateTimeOffset? LeaseUntil, string? Checkpoint, ProcessResult? Result, string? Error,
-    DateTimeOffset CreatedAt, int Version = 1);
+    DateTimeOffset CreatedAt, int Version = 1, string? GameId = null);
 
 /// <summary>A durable command is removed from active work only by a committed terminal transition.</summary>
 public sealed class Process
@@ -21,11 +21,12 @@ public sealed class Process
     };
     public static Process Restore(ProcessSnapshot state) => new(state);
     public static Process Accept(string id, string actorId, string scope, string key, string fingerprint,
-        Invocation invocation, string? checkpoint, DateTimeOffset now)
+        Invocation invocation, string? checkpoint, DateTimeOffset now, string? gameId = null)
     {
         if (new[] { id, actorId, scope, key, fingerprint, invocation.Handler }.Any(string.IsNullOrWhiteSpace))
             throw new ArgumentException("A command needs stable identity, actor, arguments and handler.");
-        return new(new(id, actorId, scope, key, fingerprint, invocation, ProcessStatus.Accepted, 0, now, null, null, checkpoint, null, null, now));
+        return new(new(id, actorId, scope, key, fingerprint, invocation, ProcessStatus.Accepted, 0, now,
+            null, null, checkpoint, null, null, now, GameId: gameId));
     }
     public bool IsTerminal => state.Status is ProcessStatus.Completed or ProcessStatus.Failed;
     public bool TryClaim(string token, DateTimeOffset now, TimeSpan duration)

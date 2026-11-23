@@ -1,3 +1,5 @@
+import { drawAnswerSheet } from './answer-sheet.js';
+
 const $=s=>document.querySelector(s),all=s=>[...document.querySelectorAll(s)];
 const names={bonuses:'Бонусы',domino:'Домино','tic-tac-toe':'Крестики-нолики'};
 const statusNames={pending:'Ожидает проверки',checking:'На проверке',checked:'Проверено','appeal-pending':'Подана апелляция','appeal-checking':'Рассматривается апелляция'};
@@ -35,7 +37,19 @@ $('#scan-blank').onchange=()=>{record().selected=$('#scan-blank').value;persist(
 action('#kit',async()=>{const kit=await api('materials','/kits','POST',{gameId:current.id,teamId:current.teamId});const r=record();r.kit=kit;r.blanks=await Promise.all(kit.blankIds.map(id=>api('materials','/blanks/'+id)));r.selected=r.blanks[0]?.id;persist();renderBlanks();notify('Сервис материалов подготовил комплект.');});
 action('#issue',async()=>{const kind=$('#modifier').value;const result=await api('materials','/blanks','POST',{gameId:current.id,teamId:current.teamId,taskId:$('#task').value,count:1,modifier:kind==='none'?null:{kind,value:kind==='add'?3:2}});const r=record();r.blanks.push(...result.blanks);r.selected=result.blanks[0].id;persist();renderBlanks();notify('Дополнительный бланк выпущен.');});
 action('#print',async()=>{const r=record();if(!r.selected)throw Error('Выберите бланк');r.job=await api('materials','/print-jobs','POST',{gameId:current.id,teamId:current.teamId,blankIds:[r.selected],taskIds:current.tasks.map(t=>t.id)});persist();notify('Задание печати создано. PDF готовится фоновым обработчиком.');});
-async function draw(token){const qr=await request('/demo/qr','POST',{token});const img=new Image();img.src=qr.image;await img.decode();const c=$('#photo'),ctx=c.getContext('2d');c.width=700;c.height=840;ctx.fillStyle='white';ctx.fillRect(0,0,700,840);ctx.fillStyle='#182e49';ctx.font='bold 28px Segoe UI';ctx.fillText('ОЛИМПИАДА · БЛАНК ОТВЕТА',35,50);ctx.font='21px Segoe UI';ctx.fillText(current.teamName,35,92);const b=record().blanks.find(b=>b.id===record().selected);ctx.fillText(`Бланк №${b?.number||'—'} · Задача №${b?.taskNumber||'—'}`,35,130);ctx.drawImage(img,140,165,420,420);ctx.strokeStyle='#a5b6c9';ctx.strokeRect(35,620,630,150);ctx.font='19px Segoe UI';ctx.fillText('Ответ команды:',55,655);ctx.font='italic 66px Georgia';ctx.fillStyle='#244b8b';ctx.fillText($('#answer').value,65,735);await decodePhoto();}
+async function draw(token) {
+  const qr = await request('/demo/qr', 'POST', { token });
+  const image = new Image();
+  image.src = qr.image;
+  await image.decode();
+  const blank = record().blanks.find(item => item.id === record().selected);
+  const task = current.tasks.find(item => item.id === blank?.taskId);
+  drawAnswerSheet($('#photo'), image, {
+    teamName: current.teamName, blankNumber: blank?.number, taskNumber: blank?.taskNumber,
+    statement: task?.statement, answer: $('#answer').value.trim(),
+  });
+  await decodePhoto();
+}
 async function decodePhoto(){const c=$('#photo'),ctx=c.getContext('2d'),pixels=ctx.getImageData(0,0,c.width,c.height);const qr=jsQR(pixels.data,pixels.width,pixels.height);photoToken=qr?.data;photoReady=!!qr;$('#qr-status').textContent=qr?'✓ QR прочитан на снимке. Сервер повторит распознавание и проверит подпись.':'QR не читается. Отправка заблокирована.';$('#submit').disabled=!photoReady;}
 action('#draw',async()=>{const b=record().blanks.find(b=>b.id===record().selected);if(!b)throw Error('Выберите выпущенный бланк');await draw(b.qrToken);notify('Снимок готов. Переключитесь на роль наблюдателя и отправьте ответ.');});
 action('#forged',async()=>{await draw('forged:'+crypto.randomUUID());notify('QR читается, но не зарегистрирован и не подписан сервисом материалов. Попробуйте отправить снимок.');});

@@ -69,3 +69,7 @@ summary { cursor: pointer; font-weight: 600; }
 .records li { display: flex; align-items: center; gap: .55rem; flex-wrap: wrap; padding: .45rem 0; border-bottom: 1px solid var(--edge); }
 .records li span { flex: 1; }
 fieldset { border: 1px solid var(--edge); border-radius: .4rem; }
+.photo-box { overflow: auto; min-height: 12rem; max-height: 64vh; background: #eef2f7; text-align: center; padding: .5rem; }
+.photo-box img { width: auto; max-width: 100%; max-height: 61vh; transform-origin: center; }
+button.correct { background: #176445; border-color: #176445; }
+button.incorrect { background: #a33536; border-color: #a33536; }

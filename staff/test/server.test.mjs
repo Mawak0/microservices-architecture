@@ -63,6 +63,7 @@ it('exchanges the code once and proxies only data for the current user and sessi
     finish: vi.fn(async () => ({ token: 'observer-token', lifetime: 600 })),
   };
   let allowed = true;
+  let verifiesGame = true;
   const send = vi.fn(async (url, options) => {
     if (url === env.STAFF_IDENTITY_URL) {
       expect(options.headers.Authorization).toBe('Bearer integration');
@@ -70,12 +71,20 @@ it('exchanges the code once and proxies only data for the current user and sessi
     }
     if (url === env.STAFF_DIRECTORY_URL) {
       expect(options.headers.Authorization).toBe('Bearer observer-token');
-      return Response.json({ tournaments: [{ games: allowed ? [{ id: 'game' }] : [] }] });
+      return Response.json({ tournaments: [{ games: allowed ? [{ id: 'game' }, { id: 'other-game' }] : [] }] });
     }
     if (String(url) === 'http://intake/receipts?gameId=game') {
       expect(options.headers.get('Authorization')).toBe('Bearer observer-token');
       return new Response(null, { status: 304, headers: { ETag: '"scope"', 'Cache-Control': 'private, no-cache' } });
     }
+    if (String(url) === 'http://intake/operations/one?gameId=game') {
+      expect(options.headers.get('Authorization')).toBe('Bearer observer-token');
+      expect(options.headers.get('If-None-Match')).toBeNull();
+      return Response.json({ status: 'Completed' }, {
+        headers: verifiesGame ? { 'Operation-Game-Verified': 'true' } : {},
+      });
+    }
+    if (String(url) === 'http://intake/operations/one?gameId=other-game') return new Response(null, { status: 404 });
     return Response.json({ id: 'original' }, { status: 201, headers: {
       'Operation-Location': '/operations/one', 'Operation-Status': 'AwaitingCheckpoint',
     } });
@@ -124,6 +133,28 @@ it('exchanges the code once and proxies only data for the current user and sessi
     expect(mutation.headers.get('operation-location')).toBe('/operations/one');
     expect(mutation.headers.get('cache-control')).toBe('no-store');
     expect(await mutation.json()).toEqual({ id: 'original' });
+
+    const statusPath = '/api/intake/operations/one';
+    const status = await call(statusPath + '?gameId=other-game', { headers: { ...headers, 'If-None-Match': '*' } });
+    expect(status.status).toBe(200);
+    expect(status.headers.get('cache-control')).toBe('no-store');
+    expect(await status.json()).toEqual({ status: 'Completed' });
+    const different = await call(statusPath, { headers: { ...headers, 'X-Staff-Game': 'other-game' } });
+    expect(different.status).toBe(404);
+    expect(await different.json()).toEqual({ code: 'NOT_FOUND' });
+    verifiesGame = false;
+    expect((await call(statusPath, { headers })).status).toBe(503);
+
+    const { 'X-Staff-Game': _, ...unscoped } = headers;
+    const statusCalls = () => send.mock.calls.filter(([url]) => String(url).includes('/operations/')).length;
+    const before = statusCalls();
+    expect((await call(statusPath, { headers: unscoped })).status).toBe(403);
+    allowed = false;
+    const denied = await call(statusPath, { headers });
+    expect(denied.status).toBe(403);
+    expect(await denied.json()).toEqual({ code: 'GAME_ACCESS_DENIED' });
+    expect(statusCalls()).toBe(before);
+
     expect((await call('/auth/logout', { method: 'POST', headers })).status).toBe(204);
     expect((await call('/api/session', { headers })).status).toBe(401);
   } finally {

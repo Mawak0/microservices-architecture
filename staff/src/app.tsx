@@ -63,7 +63,8 @@ function Cabinet({ session, areas }: { session: Session; areas: Area[] }) {
   const { actor, directory } = session;
   const api = useMemo(() => new StaffApi(actor.id), [actor.id]);
   const queue = useMemo(() => new OperationQueue(api, new OutboxStore()), [api]);
-  const [gameId, choose] = useState(() => sessionStorage.getItem('staff-game:' + actor.id) ?? '');
+  const gamePreference = 'staff-game:' + actor.id;
+  const [preferredGameId, choose] = useState(() => sessionStorage.getItem(gamePreference) ?? '');
   const [section, open] = useState('');
   const [jobs, setJobs] = useState<Job[]>([]);
   const [dirty, setDirty] = useState(false);
@@ -74,7 +75,8 @@ function Cabinet({ session, areas }: { session: Session; areas: Area[] }) {
   const visible = areas.filter(area => can(actor, area.role));
   const active = visible.find(area => area.id === section) ?? visible[0];
   const games = directory.tournaments.flatMap(tournament => tournament.games);
-  const game = games.find(item => item.id === gameId);
+  const game = games.find(item => item.id === preferredGameId) ?? (games.length === 1 ? games[0] : undefined);
+  const gameId = game?.id ?? '';
   const gameApi = useMemo(() => api.forGame(gameId), [api, gameId]);
 
   useEffect(() => {
@@ -120,7 +122,7 @@ function Cabinet({ session, areas }: { session: Session; areas: Area[] }) {
     const pending = jobs.some(job => job.gameId === gameId && ['queued', 'accepted'].includes(job.state));
     if ((dirty || pending) && !window.confirm('Есть незавершённая работа. Сменить игру?')) return;
     setDirty(false);
-    sessionStorage.setItem('staff-game:' + actor.id, id);
+    sessionStorage.setItem(gamePreference, id);
     choose(id);
   }
 
@@ -139,14 +141,14 @@ function Cabinet({ session, areas }: { session: Session; areas: Area[] }) {
     <header className="topbar">
       <a className="brand" href="/">Кабинет олимпиады</a>
       <label className="game-picker">Игра
-        <select value={game?.id ?? ''} onChange={e => changeGame(e.target.value)}>
-          <option value="">Выберите игру</option>
+        <select value={gameId} onChange={e => changeGame(e.target.value)} disabled={games.length === 0}>
+          <option value="" disabled>Выберите игру</option>
           {directory.tournaments.map(tournament => <optgroup key={tournament.id} label={tournament.name}>
             {tournament.games.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
           </optgroup>)}
         </select>
       </label>
-      <span className="status" role="status">{online ? 'На связи' : 'Нет связи'}</span>
+      <span className="status" role="status">{online ? 'Онлайн' : 'Нет связи'}</span>
       <button className="quiet" onClick={() => void logout()}>Выйти</button>
     </header>
     <div className="layout">
@@ -160,7 +162,11 @@ function Cabinet({ session, areas }: { session: Session; areas: Area[] }) {
           : game && active ? <active.view key={game.id + ':' + active.id} actor={actor}
               game={game} api={gameApi} queue={queue} jobs={jobs.filter(job => job.gameId === game.id)}
               online={online} setDirty={setDirty}/>
-            : <h1>{game ? 'Рабочие места' : 'Выберите игру'}</h1>}
+            : active ? <section className="panel stack">
+                <h1>{active.title}</h1>
+                <p>{games.length > 0 ? 'Выберите игру в верхней панели.' : 'Нет доступных игр.'}</p>
+              </section>
+              : <h1>Нет доступных разделов</h1>}
         <details className="outbox">
           <summary>Отправка · {jobs.filter(job => job.state === 'queued' || job.state === 'accepted').length}</summary>
           {jobs.length === 0 ? <p>Очередь пуста.</p> : <ul>

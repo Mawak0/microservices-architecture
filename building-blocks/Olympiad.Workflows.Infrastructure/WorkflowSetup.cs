@@ -34,9 +34,14 @@ public static class WorkflowSetup
         app.UseMiddleware<SavedRequestMiddleware>();
         var route=app.MapGet("/operations/{id}",async (string id,HttpContext context,IProcessStore store,HttpWorkflowOptions options) =>
         {
+            context.Response.Headers.CacheControl = "no-store";
             var actor=options.CaptureActor(context);
             var operation=await store.FindAsync(id,actor.Administrator?"*":actor.Id,context.RequestAborted);
-            return operation is null?Results.NotFound():Results.Json(SavedRequestMiddleware.View(operation));
+            var games = context.Request.Query["gameId"];
+            if (operation is null || games.Count > 0 && (games.Count != 1 || games[0] != operation.GameId))
+                return Results.NotFound();
+            if (games.Count == 1) context.Response.Headers["Operation-Game-Verified"] = "true";
+            return Results.Json(SavedRequestMiddleware.View(operation));
         });
         app.Services.GetRequiredService<HttpWorkflowOptions>().ProtectStatusEndpoint(route);
     }

@@ -36,6 +36,14 @@ public sealed class PostgresProcessTests
         var done = await restarted.FindAsync(claim.Id, "observer", default);
         Assert.Equal(ProcessStatus.Completed, done!.Status);
         Assert.Null(done.Invocation);
+        Assert.Null(done.GameId);
+        var replacement = ProcessTests.New().Snapshot with { GameId = "round-1" };
+        var bound = await restarted.AcceptAsync(Process.Restore(replacement), default);
+        Assert.Equal(done.Id, bound.Id);
+        Assert.Equal(done.Status, bound.Status);
+        Assert.Equal("round-1", (await store.FindAsync(done.Id, "observer", default))!.GameId);
+        await Assert.ThrowsAsync<ProcessKeyConflictException>(() =>
+            restarted.AcceptAsync(Process.Restore(replacement with { GameId = "round-2" }), default));
         await restarted.CompensatedAsync(claim.Id, "one", ProcessTests.Now, default);
         await using var db = new NpgsqlConnection(connection); await db.OpenAsync();
         await using var history = new NpgsqlCommand("SELECT COUNT(*) FROM process_history WHERE process_id=@id", db);

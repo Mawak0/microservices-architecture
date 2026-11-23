@@ -23,12 +23,13 @@ public sealed class HttpWorkflowTests
     public async Task RequestIsStoredBeforeHandlerAndOnlyCheckpointClearsIt()
     {
         await using var host = await Host.Start();
-        using var first = await host.Send("/answers/task?number=7", "{\"value\":42}", "once");
+        using var first = await host.Send("/answers/task?number=7", """{"value":42,"gameId":"round-1"}""", "once");
         Assert.Equal(HttpStatusCode.Created, first.StatusCode);
         var id = first.Headers.GetValues("Operation-Id").Single();
         var store = host.App.Services.GetRequiredService<IProcessStore>();
         var waiting = await store.FindAsync(id, "observer", default);
         Assert.Equal(ProcessStatus.AwaitingCheckpoint, waiting!.Status);
+        Assert.Equal("round-1", waiting.GameId);
         Assert.NotNull(waiting.Invocation);
         Assert.Equal("7", host.State.Query);
         Assert.Equal("task", host.State.Route);
@@ -37,15 +38,19 @@ public sealed class HttpWorkflowTests
         Assert.Equal("token", host.State.Assignment);
         Assert.True(host.State.SavedBeforeExecution);
         Assert.Equal(42, host.State.Value);
-        using var replay = await host.Send("/answers/task?number=7", "{ \"value\" : 42 }", "once");
+        using var replay = await host.Send("/answers/task?number=7", """{ "gameId" : "round-1", "value" : 42 }""", "once");
         Assert.Equal(HttpStatusCode.OK, replay.StatusCode);
         Assert.Equal(1, host.State.Effects);
-        using var changed = await host.Send("/answers/task?number=7", "{\"value\":43}", "once");
+        using var changed = await host.Send("/answers/task?number=7", """{"value":43,"gameId":"round-1"}""", "once");
         Assert.Equal(HttpStatusCode.Conflict, changed.StatusCode);
         await store.ConfirmAsync("ReviewRegistered", "task", default);
         var done = await store.FindAsync(id, "observer", default);
         Assert.Null(done!.Invocation);
-        using var own = await host.Get("/operations/" + id, "observer");
+        Assert.Equal("round-1", done.GameId);
+        using var own = await host.Get("/operations/" + id + "?gameId=round-1", "observer");
+        Assert.Equal(HttpStatusCode.OK, own.StatusCode);
+        Assert.True(own.Headers.CacheControl!.NoStore);
+        Assert.Equal("true", own.Headers.GetValues("Operation-Game-Verified").Single());
         var view = await own.Content.ReadAsStringAsync();
         Assert.Contains("Completed", view);
         Assert.DoesNotContain("Arguments", view, StringComparison.OrdinalIgnoreCase);
@@ -54,6 +59,9 @@ public sealed class HttpWorkflowTests
         Assert.Equal(HttpStatusCode.NotFound, other.StatusCode);
         using var admin = await host.Get("/operations/" + id, "admin");
         Assert.Equal(HttpStatusCode.OK, admin.StatusCode);
+        Assert.False(admin.Headers.Contains("Operation-Game-Verified"));
+        using var anotherGame = await host.Get("/operations/" + id + "?gameId=round-2", "admin");
+        Assert.Equal(HttpStatusCode.NotFound, anotherGame.StatusCode);
         using var anonymous = await host.Client.GetAsync("/operations/" + id);
         Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
     }

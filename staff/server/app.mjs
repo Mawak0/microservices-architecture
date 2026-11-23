@@ -119,21 +119,26 @@ export function app(config, identity, { send = fetch, read = readFile, root = 'd
         if (request.headers['x-staff-actor'] !== session.actorId)
           throw new RequestError(409, 'SESSION_CHANGED');
 
+        const operationStatus = segment === 'operations';
+        if (operationStatus && (method !== 'GET' || rest.length !== 1))
+          throw new RequestError(404, 'NOT_FOUND');
+
+        const gameId = request.headers['x-staff-game'];
+        if (!gameId) throw new RequestError(403, 'GAME_ACCESS_DENIED');
+        const access = await directory(session.token);
+        if (access.status === 401) throw new RequestError(401, 'UNAUTHENTICATED');
+        if (access.status === 403) throw new RequestError(403, 'GAME_ACCESS_DENIED');
+        if (!access.ok) throw new RequestError(503, 'DIRECTORY_UNAVAILABLE');
+        if (!directoryContains(await access.json(), gameId))
+          throw new RequestError(403, 'GAME_ACCESS_DENIED');
+
         const serviceBase = config.services[service].replace(/\/?$/, '/');
         const destination = new URL([segment, ...rest].join('/') + url.search, serviceBase);
         const headers = new Headers({ Authorization: 'Bearer ' + session.token });
         const bytes = method === 'GET' ? undefined : await body(request);
-        if (segment === 'operations') {
-          if (method !== 'GET' || rest.length !== 1) throw new RequestError(404, 'NOT_FOUND');
+        if (operationStatus) {
+          destination.search = new URLSearchParams({ gameId }).toString();
         } else {
-          const gameId = request.headers['x-staff-game'];
-          if (!gameId) throw new RequestError(403, 'GAME_ACCESS_DENIED');
-          const access = await directory(session.token);
-          if (access.status === 401) throw new RequestError(401, 'UNAUTHENTICATED');
-          if (access.status === 403) throw new RequestError(403, 'GAME_ACCESS_DENIED');
-          if (!access.ok) throw new RequestError(503, 'DIRECTORY_UNAVAILABLE');
-          if (!directoryContains(await access.json(), gameId))
-            throw new RequestError(403, 'GAME_ACCESS_DENIED');
           const allowed = await belongsToGame({ service, segment, rest, method, url, bytes, gameId }, async path => {
             const result = await send(new URL(path, serviceBase), {
               headers, redirect: 'error', signal: AbortSignal.timeout(8_000),
@@ -143,14 +148,21 @@ export function app(config, identity, { send = fetch, read = readFile, root = 'd
             return result.ok ? await result.json() : undefined;
           });
           if (!allowed) throw new RequestError(403, 'GAME_ACCESS_DENIED');
+          for (const name of forwardedRequestHeaders)
+            if (request.headers[name]) headers.set(name, request.headers[name]);
         }
-        for (const name of forwardedRequestHeaders)
-          if (request.headers[name]) headers.set(name, request.headers[name]);
         const remote = await send(destination, {
           method, headers, body: bytes,
           redirect: 'error', signal: AbortSignal.timeout(24_000),
         });
-        return await relay(remote, response, method === 'GET');
+        if (operationStatus) {
+          if (remote.status === 404) throw new RequestError(404, 'NOT_FOUND');
+          if (remote.ok && remote.headers.get('Operation-Game-Verified') !== 'true') {
+            await remote.body?.cancel();
+            throw new RequestError(503, 'SERVICE_UNAVAILABLE');
+          }
+        }
+        return await relay(remote, response, method === 'GET' && !operationStatus);
       }
       if (method === 'GET' && url.pathname === '/') {
         const index = await read(join(root, 'index.html'));

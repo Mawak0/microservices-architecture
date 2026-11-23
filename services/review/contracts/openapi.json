@@ -1610,11 +1610,28 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "gameId",
+            "in": "query",
+            "description": "Шлюз передаёт проверенную игру. Если операция относится к другой игре или её игра неизвестна, сервис возвращает 404.",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
           "200": {
             "description": "Состояние, число попыток, следующая попытка, причина отказа и идентификатор результата. Без тела исходного запроса и секретов.",
+            "headers": {
+              "Operation-Game-Verified": {
+                "description": "Возвращается со значением true после проверки переданного gameId.",
+                "schema": {
+                  "type": "string",
+                  "enum": ["true"]
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {

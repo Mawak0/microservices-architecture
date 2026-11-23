@@ -41,6 +41,12 @@ jobs:
         run: |
           node demo/restart-smoke.mjs after
           node demo/delivery-smoke.mjs verify
+      - name: Verify the staff cabinet in Chromium against the stand
+        run: |
+          npm ci --prefix staff
+          npm run build --prefix staff
+          npm exec --prefix staff -- playwright install chromium --with-deps --only-shell
+          node staff/test/browser-smoke.mjs
       - name: Show diagnostics
         if: failure()
         run: docker compose -f deploy/compose.yml --env-file deploy/.env logs --no-color --tail 120
