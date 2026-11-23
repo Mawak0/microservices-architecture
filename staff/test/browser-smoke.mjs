@@ -34,10 +34,12 @@ async function waitFor(description, read) {
 }
 
 const game = await api(demo + '/demo/game', { body: { name: 'Браузерный сценарий', system: 'bonuses' } });
-async function issuePhoto(game, task) {
+assert.equal(game.teams.length, 3);
+async function issuePhoto(game, task, teamId = game.teamId) {
   const { blanks: [blank] } = await api(demo + '/api/materials/blanks', {
-    body: { gameId: game.id, teamId: game.teamId, taskId: task.id, count: 1 },
+    body: { gameId: game.id, teamId, taskId: task.id, count: 1 },
   });
+  assert.equal(blank.teamId, teamId);
   const { image } = await api(demo + '/demo/qr', { body: { token: blank.qrToken } });
   return { blank, base64: image.split(',')[1] };
 }
@@ -49,10 +51,11 @@ function submitPhoto(game, photo) {
   } });
 }
 
-const [first, second] = await Promise.all(game.tasks.slice(0, 2).map(task => issuePhoto(game, task)));
+const [first, second] = await Promise.all(game.tasks.slice(0, 2)
+  .map((task, index) => issuePhoto(game, task, game.teams[index].id)));
 const contextUrl = demo + '/staff-test-context';
 const directory = { tournaments: [{ id: game.tournamentId, name: 'Олимпиада', games: [{
-  id: game.id, name: game.name, tasks: game.tasks, teams: [{ id: game.teamId, name: game.teamName }],
+  id: game.id, name: game.name, tasks: game.tasks, teams: game.teams,
 }] }] };
 const sessions = new Sessions();
 let handle;
@@ -68,6 +71,21 @@ handle = app({ origin, identityUrl: demo + '/auth/introspect', directoryUrl: con
 let browser;
 try {
   browser = await chromium.launch({ executablePath: process.env.STAFF_TEST_BROWSER });
+  const sample = await browser.newPage();
+  await sample.goto(demo + '/health');
+  const filledSheet = await sample.evaluate(async ({ base64, fields }) => {
+    const { drawAnswerSheet } = await import('/answer-sheet.js');
+    const qr = new Image();
+    qr.src = 'data:image/png;base64,' + base64;
+    await qr.decode();
+    const canvas = document.createElement('canvas');
+    drawAnswerSheet(canvas, qr, fields);
+    return canvas.toDataURL('image/png').split(',')[1];
+  }, { base64: first.base64, fields: {
+    teamName: game.teams[0].name, blankNumber: first.blank.number, taskNumber: first.blank.taskNumber,
+    statement: game.tasks[0].statement, answer: game.tasks[0].referenceAnswer,
+  } });
+  await sample.close();
   async function workspace(role) {
     const context = await browser.newContext();
     context.setDefaultTimeout(20_000);
@@ -110,7 +128,7 @@ try {
   await selectGame(capture);
   const preview = capture.waitForResponse(response => new URL(response.url()).pathname === '/api/intake/receipts/preview');
   await capture.getByLabel('Загрузить фото').setInputFiles({
-    name: 'answer.png', mimeType: 'image/png', buffer: Buffer.from(first.base64, 'base64'),
+    name: 'answer.png', mimeType: 'image/png', buffer: Buffer.from(filledSheet, 'base64'),
   });
   const previewResponse = await preview.catch(async error => {
     throw new Error(`QR preview did not run: ${await capture.locator('body').innerText()}`, { cause: error });

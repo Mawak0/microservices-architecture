@@ -22,6 +22,8 @@ const children=[];let stopping=false;
 const send=(r,s,b)=>{r.writeHead(s,{'content-type':'application/json; charset=utf-8','cache-control':'no-store'});r.end(JSON.stringify(b));};
 const roles={'demo-admin':['admin'],'demo-observer':['observer'],'demo-checker':['checker'],'demo-checker-2':['checker'],'demo-organizer':['organizer'],'demo-system':['integration']};
 const game=id=>state.games.find(g=>g.id===id);
+const teamNames = ['Команда «Интеграл»', 'Команда «Вектор»', 'Команда «Парабола»'];
+const teamsOf = game => game.teams ?? [{ id: game.teamId, name: game.teamName }];
 async function call(service,path,method='GET',body,role='system',extra={}){
  const headers={authorization:'Bearer demo-'+role,...extra}; if(body!==undefined)headers['content-type']='application/json';if(method!=='GET')headers['Idempotency-Key']??=randomUUID();
  const start=Date.now(); let r;
@@ -42,7 +44,13 @@ async function route(req,res){
  if(p==='/auth/introspect')return send(res,200,{active:!!roles[b.token],userId:b.token,roles:roles[b.token]||[]});
  if(p==='/clock')return send(res,200,{now:new Date().toISOString()});
  if(p.startsWith('/games/')){const g=game(p.split('/')[2]);if(g)return send(res,200,gameProfile(g));}
- if(p.startsWith('/teams/')){const g=state.games.find(g=>g.teamId===p.split('/')[2]);if(g)return send(res,200,{id:g.teamId,gameId:g.id,admitted:true});}
+ if(p.startsWith('/teams/')){
+  const id = p.split('/')[2];
+  for (const game of state.games) {
+   const team = teamsOf(game).find(item => item.id === id);
+   if (team) return send(res, 200, { ...team, gameId: game.id, admitted: true });
+  }
+ }
  if(p.startsWith('/tasks/')){const t=state.games.flatMap(g=>g.tasks).find(t=>t.id===p.split('/')[2]);if(t)return send(res,200,t);}
  if(p.startsWith('/material-templates/'))return send(res,200,{key:decodeURIComponent(p.slice(20)),format:'declarative-v1',answerSheet:[{kind:'field',field:'heading'},{kind:'field',field:'taskNumber'},{kind:'field',field:'blankNumber'},{kind:'field',field:'modifierLabel'},{kind:'qr'},{kind:'answer-area'}],taskSheet:[{kind:'field',field:'taskNumber'},{kind:'field',field:'statement'}]});
  if(p.startsWith('/receipts/')){const r=await call('intake',p);res.writeHead(r.status,{'content-type':r.type});return res.end(r.bytes);}
@@ -56,7 +64,8 @@ async function route(req,res){
  }
  if(p==='/demo/game'&&req.method==='POST'){
   if(!['bonuses','domino','tic-tac-toe'].includes(b.system))return send(res,422,{message:'Выберите игру'});
-  const g={id:randomUUID(),teamId:randomUUID(),name:b.name||'Живая демонстрация',teamName:'Команда «Интеграл»',system:b.system,status:'running',tournamentId:randomUUID(),admissionVersion:1,lateSubmissionAllowed:false,submissionDeadline:new Date(Date.now()+86400000).toISOString(),appealDeadline:new Date(Date.now()+86400000).toISOString(),finishDeadline:new Date(Date.now()+86400000).toISOString(),tasks:[1,2,3].map((n)=>({id:randomUUID(),number:String(n),statement:`Вычислите ${n+1} + ${n+2}`,referenceAnswer:String(2*n+3)}))};
+  const teams = teamNames.map(name => ({ id: randomUUID(), name }));
+  const g={id:randomUUID(),teamId:teams[0].id,name:b.name||'Живая демонстрация',teamName:teams[0].name,teams,system:b.system,status:'running',tournamentId:randomUUID(),admissionVersion:1,lateSubmissionAllowed:false,submissionDeadline:new Date(Date.now()+86400000).toISOString(),appealDeadline:new Date(Date.now()+86400000).toISOString(),finishDeadline:new Date(Date.now()+86400000).toISOString(),tasks:[1,2,3].map((n)=>({id:randomUUID(),number:String(n),statement:`Вычислите ${n+1} + ${n+2}`,referenceAnswer:String(2*n+3)}))};
   state.games.unshift(g);await save();await ok('intake','/intake-sessions/'+g.id,'PUT',{admissionVersion:1});await ok('review','/appeal-quotas/'+g.id,'PUT',{limit:2},'admin');return send(res,201,g);
  }
  if(p==='/demo/deadline'&&req.method==='POST'){
@@ -71,7 +80,7 @@ async function route(req,res){
   const path='/'+rest.join('/')+url.search;const r=await call(service,path,req.method,raw?b:undefined,req.headers['x-demo-role']||'admin',{...(req.headers['assignment-token']?{'Assignment-Token':req.headers['assignment-token']}:{}),...(req.headers['idempotency-key']?{'Idempotency-Key':req.headers['idempotency-key']}:{})});
   res.writeHead(r.status,{'content-type':r.type,'cache-control':'no-store',...(r.operation?{'Operation-Id':r.operation,'Operation-Status':r.operationStatus,...(r.operationLocation?{'Operation-Location':'/api/'+service+r.operationLocation}:{})}:{})});return res.end(r.bytes);
  }
- if(p==='/'||p==='/app.js'||p==='/style.css'){const name=p==='/'?'index.html':p.slice(1);res.writeHead(200,{'content-type':name.endsWith('.html')?'text/html; charset=utf-8':name.endsWith('.js')?'text/javascript; charset=utf-8':'text/css; charset=utf-8'});return res.end(await readFile(join(root,'demo/public',name)));}
+ if(['/', '/app.js', '/answer-sheet.js', '/style.css'].includes(p)){const name=p==='/'?'index.html':p.slice(1);res.writeHead(200,{'content-type':name.endsWith('.html')?'text/html; charset=utf-8':name.endsWith('.js')?'text/javascript; charset=utf-8':'text/css; charset=utf-8'});return res.end(await readFile(join(root,'demo/public',name)));}
  return send(res,404,{message:'Не найдено'});
 }
 const server=http.createServer((q,r)=>route(q,r).catch(e=>{console.error(e);if(!r.headersSent)send(r,e.status||500,{message:e.message});else r.end();}));
