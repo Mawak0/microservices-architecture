@@ -2,7 +2,9 @@ import 'fake-indexeddb/auto';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { StaffApp, type Area } from '../src/app';
+import { observerAreas } from '../src/observer';
 import { OutboxStore } from '../src/outbox-store';
+import { reviewAreas } from '../src/reviewer';
 
 const directory = { tournaments: [{ id: 't', name: 'Финал', games: [
   { id: 'g', name: 'Бонусы', tasks: [], teams: [] }, { id: 'd', name: 'Домино', tasks: [], teams: [] },
@@ -21,6 +23,8 @@ it('shows only authorized rooms and guards an unfinished action on game switch',
   const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true);
   render(<StaffApp areas={areas}/>);
   const picker = await screen.findByLabelText('Игра');
+  expect(screen.getByRole('heading', { name: 'Проверка' })).toBeDefined();
+  expect(screen.getByText('Выберите игру в верхней панели.')).toBeDefined();
   expect(screen.queryByRole('button', { name: 'Приём' })).toBeNull();
   fireEvent.change(picker, { target: { value: 'g' } });
   fireEvent.click(screen.getByText('Бонусы · проверка'));
@@ -30,7 +34,36 @@ it('shows only authorized rooms and guards an unfinished action on game switch',
   expect(screen.getByText('Домино · проверка')).toBeDefined();
   expect(confirm).toHaveBeenCalledTimes(2);
   fireEvent(window, new Event('offline'));
-  expect(screen.getByText('На связи')).toBeDefined();
+  expect(screen.getByText('Онлайн')).toBeDefined();
+});
+
+it('opens each administrator section immediately when the catalog contains one game', async () => {
+  sessionStorage.setItem('staff-game:admin', 'removed-game');
+  const onlyGame = { tournaments: [{ ...directory.tournaments[0], games: [directory.tournaments[0].games[0]] }] };
+  vi.stubGlobal('fetch', vi.fn(async (path: string) => {
+    if (path === '/api/session') return answer({ id: 'admin', roles: ['admin'] });
+    if (path === '/api/context') return answer(onlyGame);
+    return answer({ items: [], nextOffset: null });
+  }));
+
+  render(<StaffApp areas={[...observerAreas, ...reviewAreas]}/>);
+  expect((await screen.findByLabelText<HTMLSelectElement>('Игра')).value).toBe('g');
+  const sections = [
+    ['Печать', 'Печатные материалы'],
+    ['Приём бланков', 'Приём бланков'],
+    ['Проверка ответов', 'Проверка ответов'],
+    ['Администрирование', 'Администрирование проверки'],
+  ];
+  for (const [tab, heading] of sections) {
+    const button = screen.getByRole('button', { name: tab, exact: true });
+    fireEvent.click(button);
+    expect(button.getAttribute('aria-current')).toBe('page');
+    expect(screen.getByRole('heading', { name: heading, exact: true })).toBeDefined();
+    if (tab === 'Печать') {
+      expect(await screen.findByText('Бланки по этим фильтрам не найдены.')).toBeDefined();
+      expect(screen.getByText('Заданий печати пока нет.')).toBeDefined();
+    }
+  }
 });
 
 it('returns to login and does not show another profile’s queue', async () => {
