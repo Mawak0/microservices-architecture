@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ApiError } from '../src/api';
 import type { Workstation } from '../src/app';
@@ -145,7 +145,8 @@ it('admin inspects the requested photo version and sends only confirmed changes'
   fireEvent.click(screen.getByText('Разрешить пересъёмку'));
   await waitFor(() => expect(queue.enqueue).toHaveBeenCalledTimes(1));
   expect(queue.enqueue.mock.calls[0][2]).toMatchObject({ path: '/checks/check-3/retakes/request-1/approve' });
-  await waitFor(() => expect((screen.getByText('Запросить пересъёмку') as HTMLButtonElement).disabled).toBe(false));
+  expect((screen.getByText('Запросить пересъёмку') as HTMLButtonElement).disabled).toBe(true);
+  expect(screen.getByText('Для выбранного бланка уже запрошена пересъёмка.')).toBeDefined();
   fireEvent.change(screen.getByLabelText('Причина'), { target: { value: 'После сверки' } });
   fireEvent.click(screen.getByText('Исправить вердикт'));
   await waitFor(() => expect(queue.enqueue).toHaveBeenCalledTimes(2));
@@ -156,6 +157,33 @@ it('admin inspects the requested photo version and sends only confirmed changes'
   fireEvent.click(screen.getByText('Установить'));
   await waitFor(() => expect(queue.enqueue).toHaveBeenCalledTimes(3));
   expect(queue.enqueue.mock.calls[2][2]).toMatchObject({ path: '/appeal-quotas/g', method: 'PUT', body: { limit: 4 } });
+});
+
+it('shows the retake action in its section and sends a confirmed request for the selected case', async () => {
+  const { props, api, queue } = context();
+  const read = api.read.getMockImplementation()!;
+  api.read.mockImplementation((service, path) => path.startsWith('/retakes') ? Promise.resolve(page([])) : read(service, path));
+  const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true);
+  const { rerender } = render(<Administration {...props}/>);
+  const section = within(screen.getByRole('region', { name: 'Запросы пересъёмки' }));
+  const action = section.getByRole<HTMLButtonElement>('button', { name: 'Запросить пересъёмку' });
+  expect(action.disabled).toBe(true);
+  expect(section.getByText('Выберите дело проверки ниже, чтобы запросить пересъёмку.')).toBeDefined();
+
+  fireEvent.click(await section.findByRole('button', { name: 'Открыть задачу 3' }));
+  await waitFor(() => expect(action.disabled).toBe(false));
+  fireEvent.click(action);
+  expect(queue.enqueue).not.toHaveBeenCalled();
+  fireEvent.click(action);
+  await waitFor(() => expect(queue.enqueue).toHaveBeenCalledExactlyOnceWith('g', 'Запрос пересъёмки', {
+    service: 'review', path: '/checks/check-3/retakes', body: { revision: 1 },
+  }));
+  expect(confirm).toHaveBeenLastCalledWith('Запросить пересъёмку бланка (задача 3, Вектор)?');
+
+  const queued = await queue.enqueue.mock.results[0].value;
+  rerender(<Administration {...props} jobs={[queued]}/>);
+  expect(action.disabled).toBe(true);
+  expect(section.getByText('Запрос пересъёмки в очереди отправки.')).toBeDefined();
 });
 
 it('checks claim and lease fences and treats a failed image fetch as unavailable', async () => {

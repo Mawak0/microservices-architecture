@@ -31,6 +31,10 @@ export function Administration({ game, api, online, queue, jobs }: Workstation) 
   const selected = useQuery<Check | undefined>(signal => checkId
     ? api.read('review', '/checks/' + encodeURIComponent(checkId), signal) : Promise.resolve(undefined), [api, checkId, jobs]);
   const check = selected.data?.id === checkId ? selected.data : undefined;
+  const retakePath = check && '/checks/' + encodeURIComponent(check.id) + '/retakes';
+  const hasRetake = check && (check.status === 'awaiting-retake' || retakes.data?.items.some(item => item.checkId === check.id));
+  const retakeQueued = jobs.some(job => job.service === 'review' && job.path === retakePath &&
+    (job.state === 'queued' || job.state === 'accepted'));
   const photoKey = check?.id + ':' + version;
   const photo = useQuery(async signal => {
     if (!check || version > (check.imageVersion || 1)) return;
@@ -74,8 +78,19 @@ export function Administration({ game, api, online, queue, jobs }: Workstation) 
       </form>
     </section>
     <div className="columns">
-      <section className="panel stack">
-        <h2>Запросы пересъёмки</h2>
+      <section className="panel stack" aria-labelledby="retake-requests">
+        <div className="row">
+          <h2 id="retake-requests">Запросы пересъёмки</h2>
+          <button disabled={!check || working || hasRetake || retakeQueued} onClick={() => {
+            if (!check || !retakePath) return;
+            const teamName = game.teams.find(item => item.id === check.teamId)?.name ?? check.teamId;
+            void send('Запрос пересъёмки', { service: 'review', path: retakePath, body: { revision: check.revision } },
+              'Запросить пересъёмку бланка (задача ' + check.taskNumber + ', ' + teamName + ')?');
+          }}>Запросить пересъёмку</button>
+        </div>
+        {!checkId && <p>Выберите дело проверки ниже, чтобы запросить пересъёмку.</p>}
+        {retakeQueued && <p role="status">Запрос пересъёмки в очереди отправки.</p>}
+        {hasRetake && <p>Для выбранного бланка уже запрошена пересъёмка.</p>}
         <ul className="records">{retakes.data?.items.map(item => <li key={item.id}>
           <span>Задача {item.taskNumber} · {item.approved ? 'Разрешено' : 'Ожидает снимка'}</span>
           <button className="quiet" onClick={() => openCheck(item.checkId)}>Открыть дело</button>
@@ -114,10 +129,6 @@ export function Administration({ game, api, online, queue, jobs }: Workstation) 
               service: 'review', path: '/checks/' + check.id + '/corrections',
               body: { revision: check.revision, reason: reason.trim(), verdict: opposite(check.verdict) },
             }, 'Исправить вердикт в выбранном деле?')}>Исправить вердикт</button>
-            <button className="quiet" disabled={working || check.status === 'awaiting-retake'} onClick={() =>
-              void send('Запрос пересъёмки', { service: 'review', path: '/checks/' + check.id + '/retakes',
-                body: { revision: check.revision } }, 'Запросить пересъёмку выбранного бланка?')
-            }>Запросить пересъёмку</button>
           </div>
         </>}
       </section>
