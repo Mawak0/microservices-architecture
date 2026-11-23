@@ -113,6 +113,12 @@ public sealed class HttpAcceptanceTests
         using var verdict = await Olympiad.Testing.DurableHttp.Settled(() => client.PostAsJsonAsync("/checks/" + check + "/verdict", new { verdict = "correct" }));
         Assert.True(verdict.StatusCode==HttpStatusCode.OK, await verdict.Content.ReadAsStringAsync());
         Assert.Equal("Completed", verdict.Headers.GetValues("Operation-Status").Single());
+        var operation = verdict.Headers.GetValues("Operation-Location").Single();
+        using var scoped = await client.GetAsync(operation + "?gameId=" + data["gameId"].GetString());
+        Assert.Equal(HttpStatusCode.OK, scoped.StatusCode);
+        Assert.Equal("true", scoped.Headers.GetValues("Operation-Game-Verified").Single());
+        using var differentGame = await client.GetAsync(operation + "?gameId=another-game");
+        Assert.Equal(HttpStatusCode.NotFound, differentGame.StatusCode);
         using var replay = await client.PostAsJsonAsync("/checks/" + check + "/verdict", new { verdict = "correct" });
         Assert.Equal(await verdict.Content.ReadAsStringAsync(), await replay.Content.ReadAsStringAsync());
     }

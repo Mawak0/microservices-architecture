@@ -109,6 +109,7 @@ try {
   const submissions = [];
   let discard = true;
   let firstStatus;
+  let firstOperation;
   await observer.route('**/api/intake/receipts', async route => {
     const request = route.request();
     if (request.method() !== 'POST') return route.continue();
@@ -117,6 +118,7 @@ try {
     if (submissions.length === 1) {
       const response = await route.fetch();
       const status = response.status();
+      firstOperation = response.headers()['operation-location'];
       await response.dispose();
       await route.abort('connectionreset');
       firstStatus = status;
@@ -138,6 +140,13 @@ try {
   await capture.getByRole('button', { name: 'Снимок чёткий — отправить' }).click();
   await waitFor('The server did not accept the original submission', () => firstStatus);
   assert.ok(firstStatus < 300, `The original submission returned ${firstStatus}`);
+  assert.match(firstOperation, /^\/operations\/[a-zA-Z0-9_-]+$/);
+  const statusReply = await observer.request.get(new URL('/api/intake' + firstOperation, origin).href, {
+    headers: { 'X-Staff-Actor': 'demo-observer', 'X-Staff-Game': game.id },
+  });
+  assert.equal(statusReply.status(), 200);
+  assert.equal(statusReply.headers()['cache-control'], 'no-store');
+  assert.equal((await statusReply.json()).operationId, firstOperation.split('/').at(-1));
   await observer.setOffline(true);
   await capture.getByText('Нет связи', { exact: true }).waitFor();
   await observer.setOffline(false);

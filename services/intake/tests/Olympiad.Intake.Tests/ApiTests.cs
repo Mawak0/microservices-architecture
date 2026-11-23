@@ -346,6 +346,12 @@ public sealed class ApiTests
             app.Send(client, HttpMethod.Post, path, upload, "observer", "same-retake"));
         Assert.Equal(HttpStatusCode.OK, submitted.StatusCode);
         Assert.Equal("AwaitingCheckpoint", submitted.Headers.GetValues("Operation-Status").Single());
+        var operation = submitted.Headers.GetValues("Operation-Location").Single();
+        using var scoped = await app.Send(client, HttpMethod.Get, operation + "?gameId=game", token: "observer");
+        Assert.Equal(HttpStatusCode.OK, scoped.StatusCode);
+        Assert.Equal("true", scoped.Headers.GetValues("Operation-Game-Verified").Single());
+        using var differentGame = await app.Send(client, HttpMethod.Get, operation + "?gameId=another-game", token: "observer");
+        Assert.Equal(HttpStatusCode.NotFound, differentGame.StatusCode);
         var result = await submitted.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal(2, result.GetProperty("imageVersion").GetInt32());
         Assert.Equal(receipt.GetProperty("acceptedAt").GetString(), result.GetProperty("acceptedAt").GetString());

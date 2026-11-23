@@ -50,11 +50,14 @@ describe('outbox', () => {
     expect(accepted.state).toBe('accepted');
     server.read.mockResolvedValueOnce({ status: 'Running' });
     expect(await advance(accepted, server)).toEqual(accepted);
+    expect(server.read).toHaveBeenLastCalledWith('intake', '/operations/server-1', expect.anything(), job.gameId);
     expect((await advance(accepted, server)).resultId).toBe('receipt-1');
     server.read.mockResolvedValueOnce({ status: 'Failed', lastError: 'ASSIGNMENT_EXPIRED' });
     expect(await advance(accepted, server)).toMatchObject({ state: 'conflict', error: 'ASSIGNMENT_EXPIRED' });
     server.read.mockRejectedValueOnce(new ApiError(404, 'MISSING'));
-    expect(await advance(accepted, server)).toMatchObject({ state: 'queued', operation: undefined });
+    expect(await advance(accepted, server)).toMatchObject({
+      state: 'queued', operation: undefined, gameId: job.gameId, key: job.key, body: job.body,
+    });
     server.submit.mockResolvedValueOnce(response({ code: 'SESSION_CHANGED' }, { status: 409 }));
     expect(await advance(job, server)).toBe(job);
     server.submit.mockResolvedValueOnce(response({ code: 'REVISION_CONFLICT' }, { status: 409 }));

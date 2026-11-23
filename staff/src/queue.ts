@@ -71,7 +71,7 @@ export class OperationQueue {
 export async function advance(job: Job, api: Pick<StaffApi, 'read' | 'submit'>): Promise<Job> {
   try {
     if (job.operation) {
-      const status = await api.read<RemoteStatus>(job.service, job.operation, AbortSignal.timeout(8_000));
+      const status = await api.read<RemoteStatus>(job.service, job.operation, AbortSignal.timeout(8_000), job.gameId);
       if (status.status === 'Completed') return complete(job, status.resourceId);
       if (status.status === 'Failed') return { ...job, state: 'conflict', error: status.lastError ?? status.code ?? 'REQUEST_FAILED' };
       return job;

@@ -31,6 +31,8 @@ public sealed class HttpWorkflowOptions
     public required Action<HttpContext, string> RestoreActor { get; init; }
     public required Func<Exception, HttpFailure> ClassifyError { get; init; }
     public Action<HttpContext> Authorize { get; init; } = _ => { };
+    public Func<HttpContext, JsonElement?, Task<string?>> ResolveGame { get; init; } =
+        (context, body) => Task.FromResult(OperationGame.FromRequest(context, body));
     public Func<string, string, bool> Track { get; init; } = (method, _) => method is "POST" or "PUT" or "PATCH" or "DELETE";
     public Func<string, string?> Checkpoint { get; init; } = _ => null;
     public Func<string, int, int> ReplayCode { get; init; } = (_, code) => code;

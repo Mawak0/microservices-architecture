@@ -109,10 +109,12 @@ public sealed class HttpAcceptanceTests
         Assert.Equal(HttpStatusCode.Accepted, print.StatusCode);
         var operation = print.Headers.GetValues("Operation-Location").Single();
         var deadline = DateTimeOffset.UtcNow.AddSeconds(15); string? status;
-        do { using var read = await client.GetAsync(operation); status = (await read.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("status").GetString();
+        do { using var read = await client.GetAsync(operation + "?gameId=" + game); status = (await read.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("status").GetString();
             if (status == "Completed") break; await Task.Delay(100);
         } while (DateTimeOffset.UtcNow < deadline);
         Assert.Equal("Completed", status);
+        using var differentGame = await client.GetAsync(operation + "?gameId=another-game");
+        Assert.Equal(HttpStatusCode.NotFound, differentGame.StatusCode);
         client.DefaultRequestHeaders.Authorization = new("Bearer", "test-checker");
         using var forbidden = await client.PostAsJsonAsync("/print-jobs", new { gameId = game, teamId = team, blankIds = Array.Empty<string>(), taskIds = new[] { task } });
         Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);

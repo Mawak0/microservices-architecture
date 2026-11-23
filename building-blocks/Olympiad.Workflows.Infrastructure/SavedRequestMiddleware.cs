@@ -31,7 +31,12 @@ public sealed class SavedRequestMiddleware(RequestDelegate next,HttpWorkflowOpti
             await input.WriteAsync(buffer.AsMemory(0,count),context.RequestAborted);
         }
         var arguments=input.ToArray();
-        try { if(arguments.Length>0) { using var format=JsonDocument.Parse(arguments); } }
+        string? gameId;
+        try
+        {
+            using var format = arguments.Length > 0 ? JsonDocument.Parse(arguments) : null;
+            gameId = await options.ResolveGame(context, format?.RootElement);
+        }
         catch(JsonException) { await Error(context,422,"VALIDATION_ERROR"); return; }
         var headers=new Dictionary<string,string> { ["Idempotency-Key"]=key };
         if(context.Request.Headers.TryGetValue("Assignment-Token",out var assignment)) headers["Assignment-Token"]=assignment.ToString();
@@ -40,7 +45,12 @@ public sealed class SavedRequestMiddleware(RequestDelegate next,HttpWorkflowOpti
         var invocation=new Invocation(endpoint.RoutePattern.RawText!,context.Request.Method,context.Request.Path+context.Request.QueryString,
             JsonSerializer.Serialize(context.Request.RouteValues.ToDictionary(p=>p.Key,p=>p.Value?.ToString())),JsonSerializer.Serialize(headers),actor.Snapshot,arguments);
         ProcessSnapshot accepted;
-        try { accepted=await store.AcceptAsync(Process.Accept(Guid.NewGuid().ToString(),actor.Id,scope,key,fingerprint,invocation,options.Checkpoint(context.Request.Path),clock.UtcNow),context.RequestAborted); }
+        try
+        {
+            var process = Process.Accept(Guid.NewGuid().ToString(), actor.Id, scope, key, fingerprint,
+                invocation, options.Checkpoint(context.Request.Path), clock.UtcNow, gameId);
+            accepted = await store.AcceptAsync(process, context.RequestAborted);
+        }
         catch(ProcessKeyConflictException) { await Error(context,409,"IDEMPOTENCY_KEY_REUSED"); return; }
         var first=accepted.Status==ProcessStatus.Accepted && accepted.Attempts==0;
         await coordinator.RunAsync(accepted.Id,Guid.NewGuid().ToString(),context.RequestAborted);

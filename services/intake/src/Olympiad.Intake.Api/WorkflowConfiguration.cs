@@ -16,6 +16,10 @@ internal static class WorkflowConfiguration
             CaptureActor=c=> { var actor=(Actor)c.Items[typeof(Actor)]!; return ActorSnapshots.Capture(actor.UserId,actor.Roles); },
             RestoreActor=(c,json)=> { var saved=ActorSnapshots.Read(json); c.Items[typeof(Actor)]=new Actor(saved.Id,saved.Roles.ToHashSet(StringComparer.Ordinal)); },
             Track=(method,path)=>path!="/receipts/preview" && method is "POST" or "PUT" or "PATCH" or "DELETE",
+            ResolveGame = async (context, body) => context.Request.RouteValues["id"] is string receiptId
+                ? await store.ExecuteAsync(async (session, ct) =>
+                    (await session.Receipts.FindAsync(receiptId, ct))?.Blank.GameId, context.RequestAborted)
+                : OperationGame.FromRequest(context, body),
             Checkpoint=path=>path=="/receipts"?"ReviewRegistered":
                 path.StartsWith("/receipts/",StringComparison.Ordinal) && path.EndsWith("/retakes",StringComparison.Ordinal)
                     ? "RetakeRegistered" : null,

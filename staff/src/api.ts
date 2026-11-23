@@ -39,8 +39,8 @@ export class StaffApi {
 
   forGame(gameId: string) { return new StaffApi(this.actorId, this.send, gameId); }
 
-  read<T>(service: Service, path: string, signal?: AbortSignal) {
-    return this.request(service, path, { signal }).then(json<T>);
+  read<T>(service: Service, path: string, signal?: AbortSignal, gameId?: string) {
+    return this.request(service, path, { signal }, gameId).then(json<T>);
   }
 
   async command<T>(spec: Command): Promise<T> {

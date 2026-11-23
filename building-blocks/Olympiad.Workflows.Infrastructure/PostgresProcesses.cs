@@ -41,6 +41,16 @@ public sealed class PostgresProcesses(PostgresStore database) : IProcessStore
             ("actor",state.ActorId),("scope",state.Scope),("key",state.Key));
         var stored = JsonSerializer.Deserialize<ProcessSnapshot>((string)(await read.ExecuteScalarAsync(token))!,Json)!;
         if (stored.Fingerprint != state.Fingerprint) throw new ProcessKeyConflictException();
+        if (state.GameId is { } gameId && stored.GameId != gameId)
+        {
+            if (stored.GameId is not null) throw new ProcessKeyConflictException();
+
+            // An exact replay can supply the game for a process saved before it was recorded.
+            stored = stored with { GameId = gameId };
+            await using var bind = Command(connection, transaction, "UPDATE processes SET snapshot=@snapshot WHERE id=@id",
+                ("snapshot", JsonSerializer.Serialize(stored, Json)), ("id", stored.Id));
+            await bind.ExecuteNonQueryAsync(token);
+        }
         return stored;
     }, ct);
 
