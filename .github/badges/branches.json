@@ -1,81 +1,81 @@
 {
   "feature/durable-sagas": {
     "branch": "feature/durable-sagas",
-    "covered": 2985,
-    "run": "https://github.com/Mawak0/microservices-architecture/actions/runs/45107172991",
+    "covered": 2987,
+    "run": "https://github.com/Mawak0/microservices-architecture/actions/runs/45108960769",
     "sha": "6298e664a8d6e88d7dbec57046f394ec15e6a7f5",
     "status": "ok",
     "total": 3149
   },
   "feature/integrated-storage-stand": {
     "branch": "feature/integrated-storage-stand",
-    "covered": 3020,
-    "run": "https://github.com/Mawak0/microservices-architecture/actions/runs/45107172991",
+    "covered": 3016,
+    "run": "https://github.com/Mawak0/microservices-architecture/actions/runs/45108960769",
     "sha": "07276a95ba76d10a29eb7d29a023e26a83c050aa",
     "status": "ok",
     "total": 3191
   },
   "feature/postgres-storage": {
     "branch": "feature/postgres-storage",
-    "covered": 2383,
-    "run": "https://github.com/Mawak0/microservices-architecture/actions/runs/45107172991",
+    "covered": 2386,
+    "run": "https://github.com/Mawak0/microservices-architecture/actions/runs/45108960769",
     "sha": "061b4373e198810ea599f7793f31ed0078b1c295",
     "status": "ok",
     "total": 2514
   },
   "feature/s3-storage": {
     "branch": "feature/s3-storage",
-    "covered": 2472,
-    "run": "https://github.com/Mawak0/microservices-architecture/actions/runs/45107172991",
+    "covered": 2470,
+    "run": "https://github.com/Mawak0/microservices-architecture/actions/runs/45108960769",
     "sha": "3df5b3fa2ff38c3ceaff874fbeec54f5608f39d9",
     "status": "ok",
     "total": 2627
   },
   "feature/staff-api-cache": {
     "branch": "feature/staff-api-cache",
-    "covered": 3282,
-    "run": "https://github.com/Mawak0/microservices-architecture/actions/runs/45107172991",
+    "covered": 3280,
+    "run": "https://github.com/Mawak0/microservices-architecture/actions/runs/45108960769",
     "sha": "d7c51022bf73a7348f0ff105ffb84cc033ee7946",
     "status": "ok",
     "total": 3465
   },
   "feature/staff-cabinet": {
     "branch": "feature/staff-cabinet",
-    "covered": 3568,
-    "run": "https://github.com/Mawak0/microservices-architecture/actions/runs/45107172991",
+    "covered": 3570,
+    "run": "https://github.com/Mawak0/microservices-architecture/actions/runs/45108960769",
     "sha": "128ebce454a06ac7084307f798fa66ff73f660a0",
     "status": "ok",
     "total": 3790
   },
   "feature/staff-observer": {
     "branch": "feature/staff-observer",
-    "covered": 3587,
-    "run": "https://github.com/Mawak0/microservices-architecture/actions/runs/45107172991",
+    "covered": 3589,
+    "run": "https://github.com/Mawak0/microservices-architecture/actions/runs/45108960769",
     "sha": "f84d8fff8dddecb22ff0bcf46c6801445f1e1b9b",
     "status": "ok",
     "total": 3812
   },
   "feature/staff-retakes": {
     "branch": "feature/staff-retakes",
-    "covered": 3568,
-    "run": "https://github.com/Mawak0/microservices-architecture/actions/runs/45107172991",
+    "covered": 3566,
+    "run": "https://github.com/Mawak0/microservices-architecture/actions/runs/45108960769",
     "sha": "9b385c71f9b54fe829267e7f5e637d777e02c74a",
     "status": "ok",
     "total": 3790
   },
   "feature/staff-reviewer": {
     "branch": "feature/staff-reviewer",
-    "covered": 3586,
-    "run": "https://github.com/Mawak0/microservices-architecture/actions/runs/45107172991",
-    "sha": "a0677d29be85271bf50f863a6dd454ed54e2bf0d",
+    "covered": 3590,
+    "run": "https://github.com/Mawak0/microservices-architecture/actions/runs/45108960769",
+    "sha": "9819615332290e835427c885ec28fb6c2fe57a2f",
     "status": "ok",
     "total": 3812
   },
   "main": {
     "branch": "main",
     "covered": 2463,
-    "run": "https://github.com/Mawak0/microservices-architecture/actions/runs/45107172991",
-    "sha": "0d5203997fa8a31869e0b27bde8c42ddfad2d2c3",
+    "run": "https://github.com/Mawak0/microservices-architecture/actions/runs/45108960769",
+    "sha": "e6afae9b62db5d02d22bbde48d7a11e52283f9b4",
     "status": "ok",
     "total": 2593
   }
